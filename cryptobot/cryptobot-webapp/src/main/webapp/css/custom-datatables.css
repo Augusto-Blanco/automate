@@ -1,0 +1,21 @@
+@charset "UTF-8";
+
+@import url(../datatables/datatables.min.css);
+
+table.dataTable thead > tr > th.dt-orderable-asc span.dt-column-order:before, table.dataTable thead > tr > th.dt-ordering-asc span.dt-column-order:before,
+table.dataTable thead > tr > td.dt-orderable-asc span.dt-column-order:before,
+table.dataTable thead > tr > td.dt-ordering-asc span.dt-column-order:before {
+  position: absolute;
+  display: block;
+  bottom: 50%;
+  content: "\0025B2";
+}
+table.dataTable thead > tr > th.dt-orderable-desc span.dt-column-order:after, table.dataTable thead > tr > th.dt-ordering-desc span.dt-column-order:after,
+table.dataTable thead > tr > td.dt-orderable-desc span.dt-column-order:after,
+table.dataTable thead > tr > td.dt-ordering-desc span.dt-column-order:after {
+  position: absolute;
+  display: block;
+  top: 50%;
+  content: "\0025BC";
+
+}

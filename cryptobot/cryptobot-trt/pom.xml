@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<parent>
+		<groupId>net.jmb.cryptobot</groupId>
+		<artifactId>cryptobot-parent</artifactId>
+		<version>CURRENT-SNAPSHOT</version>
+		<relativePath>/..</relativePath>
+	</parent>
+	
+	<artifactId>cryptobot-trt</artifactId>
+	<name>cryptobot-trt</name>
+	<version>${cryptobot.version}</version>
+	<packaging>jar</packaging>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<classifier>boot</classifier>				
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	
+	<dependencies>
+		<dependency>
+			<groupId>net.jmb.cryptobot</groupId>
+			<artifactId>cryptobot-data</artifactId>
+			<version>${cryptobot.version}</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>net.jmb.cryptobot</groupId>
+			<artifactId>cryptobot-client-beans</artifactId>
+			<version>${cryptobot.version}</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.springframework.integration/spring-integration-file -->
+		<dependency>
+		    <groupId>org.springframework.integration</groupId>
+		    <artifactId>spring-integration-file</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-batch</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework</groupId>
+  			<artifactId>spring-web</artifactId>
+		</dependency>
+		
+	</dependencies>
+
+
+</project>
