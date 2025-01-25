@@ -2,6 +2,7 @@ package net.jmb.cryptobot.data.entity;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Objects;
 
@@ -57,6 +58,7 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	private String flagSell;
 	private Double sellPrice;
 	private Double bestSellPrice;
+	private Double quantity;
 	private BigDecimal amountB100;
 	
 	//bi-directional one-to-one association to Trade
@@ -448,6 +450,7 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 		
 		public Cotation resetEvaluation() {
 			return this.amountB100(null)
+				.quantity(null)
 				.sellPrice(null)
 				.buyPrice(null)
 				.bestBuyPrice(null)
@@ -545,46 +548,30 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 
 		public Cotation duplicate() {
 			Cotation newCotation = new Cotation();
+			newCotation.setId(this.getId());
 			newCotation.symbol = this.symbol;
 			newCotation.datetime = this.datetime;
 			newCotation.price = this.price;
-			newCotation.max1h = this.max1h;
-			newCotation.max12h = this.max12h;
-			newCotation.max24h = this.max24h;
-			newCotation.max6j = this.max6j;
-			newCotation.min1h = this.min1h;
-			newCotation.min12h = this.min12h;
-			newCotation.min24h = this.min24h;
-			newCotation.min6j = this.min6j;
-			newCotation.volat1h = this.volat1h;
-			newCotation.volat12h = this.volat12h;
-			newCotation.volat24h = this.volat24h;
-			newCotation.volat6j = this.volat6j;
 			newCotation.var5m = this.var5m;
-			newCotation.var15m = this.var15m;
-			newCotation.var30m = this.var30m;
-			newCotation.var1h = this.var1h;
-			newCotation.var6h = this.var6h;
-			newCotation.var12h = this.var12h;
-			newCotation.var24h = this.var24h;
-			newCotation.var6j = this.var6j;
 			newCotation.currentSide = this.currentSide;
 			newCotation.flagBuy = this.flagBuy;
 			newCotation.bestBuyPrice = this.bestBuyPrice;
 			newCotation.flagSell = this.flagSell;
 			newCotation.bestSellPrice = this.bestSellPrice;
+			newCotation.quantity = this.quantity;
 			newCotation.amountB100 = this.amountB100;
+			newCotation.buyPrice = this.buyPrice;
+			newCotation.sellPrice = this.sellPrice;
 			newCotation.trade = this.trade;
-			newCotation.setId(this.getId());
 			return newCotation;
 		}
 
 
 		@Override
 		public String toString() {
-			return "Cotation [symbol=" + symbol + ", datetime=" + datetime + ", price=" + price + ", currentSide="
-					+ currentSide + ", buyPrice=" + buyPrice + ", bestBuyPrice=" + bestBuyPrice + ", sellPrice="
-					+ sellPrice + ", bestSellPrice=" + bestSellPrice + ", amountB100=" + amountB100 + "]";
+			String date = (datetime != null) ? new SimpleDateFormat("dd/MM HH:mm").format(datetime) : null;
+			return "Cotation [" + symbol + " " + date + ": price=" + price + ", side=" + currentSide + ", quantity=" + quantity + ", amountB100=" + amountB100
+				+ ", buyPrice=" + buyPrice + ", bestBuyPrice=" + bestBuyPrice + ", sellPrice=" + sellPrice + ", bestSellPrice=" + bestSellPrice + "]";
 		}
 
 
@@ -614,6 +601,21 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 		
 		public Cotation buyPrice(Double buyPrice) {
 			this.buyPrice = buyPrice;
+			return this;
+		}
+
+
+		public Double getQuantity() {
+			return quantity;
+		}
+
+
+		public void setQuantity(Double quantity) {
+			this.quantity = quantity;
+		}
+		
+		public Cotation quantity(Double quantity) {
+			this.quantity = quantity;
 			return this;
 		}
 

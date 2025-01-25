@@ -33,11 +33,11 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 		Specification<AssetConfig> specif = (root, query, builder) -> {
 			Predicate predicate = builder.conjunction();	
 			if (refDate != null) {
-				Predicate startTimePredicate = builder.greaterThanOrEqualTo(root.get("startTime"), refDate);
+				Predicate startTimePredicate = builder.greaterThanOrEqualTo(root.get("endTime"), refDate);
 				predicate = builder.and(predicate, startTimePredicate);
 			}
 			if (symbol != null) {
-				Predicate symbolPredicate = builder.lessThanOrEqualTo(root.get("symbol"), symbol);
+				Predicate symbolPredicate = builder.equal(root.get("symbol"), symbol);
 				predicate = builder.and(predicate, symbolPredicate);
 			}
 			return predicate;
@@ -49,6 +49,8 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 	default public long deleteDateGreaterOrEquals(String symbol, Date refDate) {
 		return delete(specDateGreaterOrEquals(symbol, refDate));
 	}
+	
+	List<AssetConfig> findBySymbolEqualsAndEndTimeGreaterThanEqual(String symbol, Date dateRef);
 	
 	
 	public List<AssetConfig> findBySymbol(String symbol);

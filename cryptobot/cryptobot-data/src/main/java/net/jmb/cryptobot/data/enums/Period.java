@@ -2,7 +2,7 @@ package net.jmb.cryptobot.data.enums;
 
 import java.util.stream.Stream;
 
-public enum Period {
+public enum Period implements Comparable<Period> {
 	
 	_5m("5m"),
 	_15m("15m"),
@@ -32,7 +32,6 @@ public enum Period {
 				.findFirst()
 				.orElse(null);
 	}
-
 
 
 }

@@ -9,6 +9,7 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.persistence.Transient;
 
 
 /**
@@ -31,7 +32,8 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 	private BigDecimal maxVarHigh;
 	private BigDecimal maxVarLow;
 	private BigDecimal stopLoss;
-
+	@Transient
+	private boolean realEval;
 	
 		
 	public AssetConfig() {
@@ -120,8 +122,23 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 
 	@Override
 	public String toString() {
-		return "AssetConfig [symbol=" + symbol + ", startTime=" + startTime + ", maxVarHigh=" + maxVarHigh
+		return "AssetConfig [symbol=" + symbol + ", start=" + startTime + ", end=" + endTime + ", maxVarHigh=" + maxVarHigh
 				+ ", maxVarLow=" + maxVarLow + ", stopLoss=" + stopLoss + "]";
+	}
+
+
+	public boolean isRealEval() {
+		return realEval;
+	}
+
+
+	public void setRealEval(boolean realEval) {
+		this.realEval = realEval;
+	}
+	
+	public AssetConfig realEval(boolean realEval) {
+		this.realEval = realEval;
+		return this;
 	}
 
 

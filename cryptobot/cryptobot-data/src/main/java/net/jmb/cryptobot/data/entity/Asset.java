@@ -18,35 +18,42 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import net.jmb.cryptobot.data.enums.Period;
 
 @Entity
 @Table(name = "asset")
-@NamedQuery(name="Asset.findAll", query="SELECT v FROM Asset v")
+@NamedQuery(name = "Asset.findAll", query = "SELECT v FROM Asset v")
+
 public class Asset extends AbstractEntity implements Serializable {
+	
 	private static final long serialVersionUID = 1L;
-	
-	
-	private String platform;	
+
+	private String platform;
 	private String symbol;
-	@Column(name="qty")
+	@Column(name = "qty")
 	private Double quantity;
 	@Temporal(TemporalType.TIMESTAMP)
-	private Date startTime;	
+	private Date startTime;
 	@Temporal(TemporalType.TIMESTAMP)
-	private Date lastUpdate;	
+	private Date lastUpdate;
 	@Temporal(TemporalType.TIMESTAMP)
-	@Column(name="close")
+	@Column(name = "close")
 	private Date closeDate;
 	private Integer nbDecimals;
+	private Integer tradeDelay;
+	private Integer varLowLimit;
+	private Integer varHighLimit;
+	private Integer stopLossLimit;
+	private BigDecimal feesRate;
+	private String analysisPeriod;
+	private String frequency;	
 	private BigDecimal perf;
-
-
-	@OneToMany(mappedBy="asset", cascade = CascadeType.ALL, fetch=FetchType.LAZY)
+	@OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@JsonIgnore
 	private List<Trade> trades;
-
-
 	
+	
+
 	public Asset() {
 	}
 	
@@ -67,7 +74,6 @@ public class Asset extends AbstractEntity implements Serializable {
 	public void setPlatform(String platform) {
 		this.platform = platform;
 	}
-
 
 	public List<Trade> getTrades() {
 		return this.trades;
@@ -90,8 +96,8 @@ public class Asset extends AbstractEntity implements Serializable {
 		getTrades().remove(trade);
 		trade.setAsset(null);
 		return trade;
-	}	
-	
+	}
+
 	public String getSymbol() {
 		return symbol;
 	}
@@ -104,12 +110,12 @@ public class Asset extends AbstractEntity implements Serializable {
 		this.startTime = startTime;
 		return this;
 	}
-	
+
 	public Asset lastUpdate(Date lastUpdate) {
 		this.lastUpdate = lastUpdate;
 		return this;
 	}
-	
+
 	public Asset closeDate(Date close) {
 		this.closeDate = close;
 		return this;
@@ -125,17 +131,13 @@ public class Asset extends AbstractEntity implements Serializable {
 		return this;
 	}
 
-
-
 	public Asset trades(List<Trade> trades) {
 		this.trades = trades;
 		return this;
 	}
-	
-
 
 	@Override
-	public boolean equals(Object obj) {		
+	public boolean equals(Object obj) {
 		return obj != null && this.getClass().equals(obj.getClass()) && this.isSameAs((Asset) obj);
 	}
 
@@ -147,8 +149,7 @@ public class Asset extends AbstractEntity implements Serializable {
 	public void setLastUpdate(Date lastUpdate) {
 		this.lastUpdate = lastUpdate;
 	}
-	
-	
+
 	@JsonFormat(pattern = "dd/MM/yyyy HH:mm")
 	public Date getCloseDate() {
 		return closeDate;
@@ -158,7 +159,6 @@ public class Asset extends AbstractEntity implements Serializable {
 		this.closeDate = closeDate;
 	}
 
-	
 	public Double getQuantity() {
 		return quantity;
 	}
@@ -166,42 +166,141 @@ public class Asset extends AbstractEntity implements Serializable {
 	public void setQuantity(Double quantity) {
 		this.quantity = quantity;
 	}
-	
+
 	public Asset quantity(Double quantity) {
 		this.quantity = quantity;
 		return this;
 	}
 
-
 	public BigDecimal getPerf() {
 		return perf;
 	}
 
-
 	public void setPerf(BigDecimal perf) {
 		this.perf = perf;
 	}
-	
+
 	public Asset perf(BigDecimal perf) {
 		this.perf = perf;
 		return this;
 	}
 
-
 	public Integer getNbDecimals() {
 		return nbDecimals;
 	}
 
-
 	public void setNbDecimals(Integer nbDecimals) {
 		this.nbDecimals = nbDecimals;
 	}
-	
+
 	public Asset nbDecimals(Integer nbDecimals) {
 		this.nbDecimals = nbDecimals;
 		return this;
 	}
 
+	public Integer getVarLowLimit() {
+		return varLowLimit;
+	}
+
+	public void setVarLowLimit(Integer varLowLimit) {
+		this.varLowLimit = varLowLimit;
+	}
+
+	public Integer getVarHighLimit() {
+		return varHighLimit;
+	}
+
+	public void setVarHighLimit(Integer varHighLimit) {
+		this.varHighLimit = varHighLimit;
+	}
+
+	public Integer getStopLossLimit() {
+		return stopLossLimit;
+	}
+
+	public void setStopLossLimit(Integer stopLossLimit) {
+		this.stopLossLimit = stopLossLimit;
+	}
+
+	public BigDecimal getFeesRate() {
+		return feesRate;
+	}
+
+	public void setFeesRate(BigDecimal feesRate) {
+		this.feesRate = feesRate;
+	}
+
+	public Asset varLowLimit(Integer varLowLimit) {
+		this.varLowLimit = varLowLimit;
+		return this;
+	}
+
+	public Asset varHighLimit(Integer varHighLimit) {
+		this.varHighLimit = varHighLimit;
+		return this;
+	}
+
+	public Asset stopLossLimit(Integer stopLossLimit) {
+		this.stopLossLimit = stopLossLimit;
+		return this;
+	}
+
+	public Asset feesRate(BigDecimal feesRate) {
+		this.feesRate = feesRate;
+		return this;
+	}
+
+
+	public Integer getTradeDelay() {
+		return tradeDelay;
+	}
+
+
+	public void setTradeDelay(Integer tradeDelay) {
+		this.tradeDelay = tradeDelay;
+	}
 	
+	public Asset tradeDelay(Integer tradeDelay) {
+		this.tradeDelay = tradeDelay;
+		return this;
+	}
+
+
+	public String getAnalysisPeriod() {
+		return analysisPeriod;
+	}
+	
+	public Period getAnalysisPeriodEnum() {		
+		return Period.get(analysisPeriod);
+	}
+	
+
+	public void setAnalysisPeriod(String analysisPeriod) {
+		this.analysisPeriod = analysisPeriod;
+	}
+	
+	public Asset analysisPeriod(String analysisPeriod) {
+		this.analysisPeriod = analysisPeriod;
+		return this;
+	}
+
+
+	public String getFrequency() {
+		return frequency;
+	}
+	
+	public Period getFrequencyPeriod() {		
+		return Period.get(frequency);
+	}
+
+
+	public void setFrequency(String frequency) {
+		this.frequency = frequency;
+	}
+	
+	public Asset frequency(String frequency) {
+		this.frequency = frequency;
+		return this;
+	}
 
 }
