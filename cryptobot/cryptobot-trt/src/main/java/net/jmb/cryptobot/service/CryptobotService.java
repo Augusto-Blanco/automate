@@ -13,15 +13,14 @@ import net.jmb.cryptobot.data.repository.CryptobotRepository;
 import net.jmb.cryptobot.enums.ParamContext;
 
 @Service
-public class CryptobotService {
+public class CryptobotService extends CommonService {
 	
 	public static final ParamContext CONTEXTE = ParamContext.TOUT_CONTEXTE;
 
 	@Autowired
 	protected CryptobotRepository cryptobotRepository;
 	
-	
-	
+
 	
 	public List<Trade> getTradesForAsset(Long assetId) {
 		return cryptobotRepository.getTradesForAsset(assetId);

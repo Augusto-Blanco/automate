@@ -4,12 +4,10 @@ import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 
 import net.jmb.cryptobot.data.enums.Period;
-import net.jmb.cryptobot.data.repository.CryptobotRepository;
 
 
 public abstract class CommonService {	
@@ -17,17 +15,11 @@ public abstract class CommonService {
 	
 	protected ResourceLoader resourceLoader = new DefaultResourceLoader();
 	
-	@Autowired
-	protected CryptobotRepository cryptobotRepository;
-
 
 	protected Logger getLogger() {
 		return LoggerFactory.getLogger(this.getClass());
 	}	
 	
-	public CryptobotRepository getCryptobotRepository() {
-		return cryptobotRepository;
-	}
 	
 	public Date previousDateForPeriod(Date refDate, Period period) {
 		

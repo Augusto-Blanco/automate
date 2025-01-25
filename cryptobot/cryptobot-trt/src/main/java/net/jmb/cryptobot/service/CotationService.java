@@ -15,18 +15,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
 import jakarta.transaction.Transactional;
-import net.jmb.cryptobot.data.bean.OrderQO;
-import net.jmb.cryptobot.data.bean.PageData;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
-import net.jmb.cryptobot.data.entity.Trade;
 import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.enums.ParamContext;
 
 @Service
-public class CotationService extends CommonService {
+public class CotationService extends CryptobotService {
 	
 	public static final ParamContext CONTEXTE = ParamContext.TOUT_CONTEXTE;
 	
@@ -412,6 +409,50 @@ public class CotationService extends CommonService {
 	
 	
 	@Transactional
+	public List<Cotation> registerNewCotations(String symbol, List<Cotation> cotationsList) {
+		
+		List<Cotation> newCotations = new ArrayList<Cotation>();
+		
+		if (cotationsList != null && cotationsList.size() > 0) {
+			
+			Cotation lastCotation = getCryptobotRepository().getLastCotationBeforeDate(symbol, null);
+			Date lastTime = lastCotation.getDatetime();			
+			
+			for (Cotation cotation : cotationsList) {
+				if (cotation.getDatetime().after(lastTime)) {					
+					newCotations.add(cotation);
+				}
+			}
+			
+			List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod(lastCotation.getDatetime(), Period._6j));
+						
+			if (allCotations != null) {
+				
+				int startIndex = allCotations.size();				
+				allCotations.addAll(newCotations);				
+				List<Period> periodsMaj = Arrays.asList(Period._1h, Period._12h, Period._24h, Period._6j);
+				
+				for (int i = startIndex; i < allCotations.size(); i++) {
+					
+					Cotation cotation = allCotations.get(i);
+					
+					for (Period periodMaj : periodsMaj) {
+						List<Cotation> cotationGrid = getCotationGridOnPeriodBackward(cotation, allCotations, periodMaj);
+						cotation = computeLastCotation(cotationGrid, periodMaj);
+					}
+					getCryptobotRepository().getCotationRepository().save(cotation);
+				}
+			}		
+			
+		}
+		
+			
+		return newCotations;
+	}
+	
+	
+	
+	@Transactional
 	public List<Cotation> computeCotations(String symbol, Period period) {
 		
 		List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod(null, period));
@@ -434,7 +475,7 @@ public class CotationService extends CommonService {
 	}
 	
 	
-	Cotation computeLastCotation(List<Cotation> cotationGrid, Period period) {
+	private Cotation computeLastCotation(List<Cotation> cotationGrid, Period period) {
 		
 		int refIndex = cotationGrid.size() - 1;
 		Cotation refCotation = cotationGrid.get(refIndex);
@@ -610,28 +651,6 @@ public class CotationService extends CommonService {
 		return null;
 	}
 	
-
-
-	public Cotation getCotationForTrade(Long idContrat) {
-		return cryptobotRepository.getCotationForTrade(idContrat);
-	}
-	
-	
-	public Cotation getCotationForTrade(OrderQO orderQO) {
-		PageData<Trade> pageTrades = cryptobotRepository.getTrades(orderQO, null);
-		if (pageTrades != null) {
-			List<Trade> trades = pageTrades.getData();
-			if (trades.size() > 0) {
-				Trade trade = trades.get(0);
-				Cotation cotation = getCotationForTrade(trade.getId());
-				if (cotation == null) {
-					cotation = new Cotation().trade(trade);
-				}
-				return cotation;
-			}
-		}
-		return null;
-	}
 
 
 }
