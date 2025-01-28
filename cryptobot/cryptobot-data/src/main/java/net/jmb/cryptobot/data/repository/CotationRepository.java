@@ -33,15 +33,33 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 			+ 	"	where b.symbol = :symbol and b.datetime <= :maxDate "
 			+	")";
 
+	public static final String LAST_RATED_COTATION_QUERY = 		
+			"select a from Cotation a "
+		+   "where a.symbol = :symbol and a.currentSide is not null and a.datetime = ( "
+		+   "	select max(b.datetime) from Cotation b "
+		+ 	"	where b.symbol = :symbol and b.currentSide is not null "
+		+	")";
+	
+	public static final String MIN_PRICE_24H_COTATION_QUERY = 		
+			"select a from Cotation a "
+		+   "where a.symbol = :symbol and a.price = a.min24h "
+		+   "and a.datetime >= :startDate ";
 		
 	
+	@Query(LAST_RATED_COTATION_QUERY)
+	List<Cotation> findLastRatedCotationForSymbol(String symbol);		
+	
 	@Query(LAST_COTATION_FOR_SYMBOL_QUERY)
-	Cotation findLastCotationForSymbolBeforeDate(String symbol, Date maxDate);		
+	List<Cotation> findLastCotationForSymbolBeforeDate(String symbol, Date maxDate);		
+	
+	@Query(MIN_PRICE_24H_COTATION_QUERY)
+	List<Cotation> findMinPrice24hCotationForSymbolAfterDate(String symbol, Date startDate);
 	
 	
 	List<Cotation> findBySymbolEqualsAndDatetimeGreaterThanEqual(String symbol, Date datetime);
 	
 	List<Cotation> findBySymbolEqualsAndDatetimeBetween(String symbol, Date datetime0, Date datetime1);
+
 	
 	Cotation findByTradeId(Long id);
 	

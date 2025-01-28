@@ -47,6 +47,19 @@ public class CryptobotRepository extends GenericRepository {
 	}
 	
 	
+	public Cotation getLastRatedCotation(String symbol) {
+		Cotation cotation = null;
+		
+		if (symbol != null) {
+			List<Cotation> lastRatedCotationsForSymbol = cotationRepository.findLastRatedCotationForSymbol(symbol);
+			if (lastRatedCotationsForSymbol != null && lastRatedCotationsForSymbol.size() > 0) {
+				cotation = lastRatedCotationsForSymbol.get(lastRatedCotationsForSymbol.size() - 1);
+			}
+		}
+		return cotation;
+	}
+	
+	
 	public Cotation getLastCotationBeforeDate(String symbol, Date dateRef) {
 		Cotation cotation = null;
 		
@@ -54,15 +67,39 @@ public class CryptobotRepository extends GenericRepository {
 			if (dateRef == null) {
 				dateRef = new Date();
 			}
-			cotation = cotationRepository.findLastCotationForSymbolBeforeDate(symbol, dateRef);
+			List<Cotation> lastCotationsForSymbolBeforeDate = cotationRepository.findLastCotationForSymbolBeforeDate(symbol, dateRef);
+			if (lastCotationsForSymbolBeforeDate != null && lastCotationsForSymbolBeforeDate.size() > 0) {
+				cotation = lastCotationsForSymbolBeforeDate.get(lastCotationsForSymbolBeforeDate.size() - 1);
+			}
 		}
 		return cotation;
 	}
 	
 	
+	public Cotation getMin24hCotationAfterDate(String symbol, Date dateRef) {
+		Cotation cotation = null;
+		
+		if (symbol != null) {
+			if (dateRef == null) {
+				dateRef = new Date();
+			}
+			List<Cotation> cotations = cotationRepository.findMinPrice24hCotationForSymbolAfterDate(symbol, dateRef);
+			if (cotations != null && cotations.size() > 0) {
+				cotation = cotations.get(cotations.size() - 1);
+			}
+		}
+		return cotation;
+	}
+	
+
+	
+	
 	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
 		AssetConfig assetConfig = null;
-		assetConfigRepository.findBySymbolAndDate(cotation.getSymbol(), cotation.getDatetime());
+		List<AssetConfig> configList = assetConfigRepository.findBySymbolAndDate(cotation.getSymbol(), cotation.getDatetime());
+		if (configList != null && configList.size() > 0) {
+			assetConfig = configList.get(configList.size() - 1);
+		}
 		return assetConfig;
 	}	
 	
@@ -71,6 +108,12 @@ public class CryptobotRepository extends GenericRepository {
 	public void saveAsset(Asset asset) {
 		if (asset != null) {
 			assetRepository.save(asset);
+		}		
+	}
+	
+	public void saveTrade(Trade trade) {
+		if (trade != null) {
+			tradeRepository.save(trade);
 		}		
 	}
 	

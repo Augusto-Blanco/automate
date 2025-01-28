@@ -20,11 +20,10 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 	
 	public static final String ASSET_CONFIG_FOR_SYMBOL_AND_DATE = 
 			"select a from AssetConfig a "
-		+   "where a.symbol = :symbol and (a.endTime IS NULL or a.endTime > :dateRef) "
-		+ 	"and a.startTime = :dateRef or a.startTime = ( "
-		+   "	select max(b.startTime) from AssetConfig b "
-		+ 	"	where b.symbol = :symbol and b.startTime <= :dateRef "
-		+ 	"	and (b.endTime IS NULL or b.endTime > :dateRef) "
+		+   "where a.symbol = :symbol and a.endTime <= :dateRef "
+		+ 	"and a.endTime = ( "
+		+   "	select max(b.endTime) from AssetConfig b "
+		+ 	"	where b.symbol = :symbol and b.endTime <= :dateRef "
 		+	")";
 
 	
@@ -56,7 +55,7 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 	public List<AssetConfig> findBySymbol(String symbol);
 	
 	@Query(ASSET_CONFIG_FOR_SYMBOL_AND_DATE)
-	public AssetConfig findBySymbolAndDate(String symbol, Date dateRef);
+	public List<AssetConfig> findBySymbolAndDate(String symbol, Date dateRef);
 	
 	
 	

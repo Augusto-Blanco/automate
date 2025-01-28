@@ -29,6 +29,21 @@ public class CotationService extends CryptobotService {
 	
 	
 	@Transactional
+	public Cotation evaluateLastCotations(Asset asset) {
+		Cotation refCotation = cryptobotRepository.getLastRatedCotation(asset.getSymbol());
+		if (refCotation != null) {
+			return initEvaluationForCotations( asset, refCotation.getDatetime(), false);
+		} else {
+			refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), previousDateForPeriod(new Date(), Period._6j));
+			if (refCotation != null) {
+				return initEvaluationForCotations( asset, refCotation.getDatetime(), true);
+			}
+		}
+		return null;
+	}
+	
+	
+	@Transactional
 	public Cotation initEvaluationForCotations(Asset asset, Date dateRef, boolean reset) {
 		
 		Cotation cotation = null;
@@ -38,7 +53,7 @@ public class CotationService extends CryptobotService {
 			String symbol = asset.getSymbol();
 			Period analysisPeriod = asset.getAnalysisPeriodEnum();
 			if (analysisPeriod == null) {
-				analysisPeriod = Period._24h;
+				analysisPeriod = Period._12h;
 			}
 			Period frequencyPeriod = asset.getFrequencyPeriod();
 			if (frequencyPeriod == null) {
@@ -415,16 +430,26 @@ public class CotationService extends CryptobotService {
 		
 		if (cotationsList != null && cotationsList.size() > 0) {
 			
-			Cotation lastCotation = getCryptobotRepository().getLastCotationBeforeDate(symbol, null);
-			Date lastTime = lastCotation.getDatetime();			
+			Date lastTime = null;
 			
-			for (Cotation cotation : cotationsList) {
-				if (cotation.getDatetime().after(lastTime)) {					
-					newCotations.add(cotation);
+			Cotation lastCotation = getCryptobotRepository().getLastCotationBeforeDate(symbol, null);
+			
+			if (lastCotation != null) {
+				lastTime = lastCotation.getDatetime();			
+			}
+			
+			if (lastTime == null) {
+				newCotations.addAll(cotationsList);
+				
+			} else {			
+				for (Cotation cotation : cotationsList) {
+					if (cotation.getDatetime().after(lastTime)) {					
+						newCotations.add(cotation);
+					}
 				}
 			}
 			
-			List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod(lastCotation.getDatetime(), Period._6j));
+			List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod((lastTime != null ? lastTime : new Date()), Period._6j));
 						
 			if (allCotations != null) {
 				
@@ -442,14 +467,17 @@ public class CotationService extends CryptobotService {
 					}
 					getCryptobotRepository().getCotationRepository().save(cotation);
 				}
-			}		
-			
+			}
 		}
-		
 			
 		return newCotations;
 	}
 	
+	
+	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
+		AssetConfig assetConfig = cryptobotRepository.getAssetConfigForCotation(cotation);		
+		return assetConfig;
+	}
 	
 	
 	@Transactional

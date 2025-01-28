@@ -17,6 +17,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import net.jmb.cryptobot.beans.MexcAccountInfo;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
@@ -35,35 +36,50 @@ public class CryptoBatchApp implements CommandLineRunner {
 	
 	
 	public static void main(String[] args) throws Exception {
+		
 		ConfigurableApplicationContext ctx = SpringApplication.run(CryptoBatchApp.class, args);
-//       	ctx.close();			
+		if (getParameters(args).get("daemon") == null) {
+			ctx.close();			
+		}
 	}
 
 
 	public void run(String... args) throws Exception {
-        logger.info("Démarrage du job: " + new Date());
+        
+		logger.info("Démarrage du job: " + new Date());
         System.out.println("Démarrage du job: " + new Date());
         
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        String platform = null, symbol = null;
+        String date = "2025-01-24 18:50";
+
         
-        String platform = "MEXC";
-        
-        String date = "2025-01-23 13:00";
-        String symbol = "CYBRO";
-                
-        
-        Asset asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);        
-        List<Cotation> dbCotations = cotationService.getCryptobotRepository().getCotationsSinceDate(symbol, df.parse(date));
-        List<AssetConfig> assetConfigList = cotationService.getCryptobotRepository().getAssetConfigRepository().findBySymbolEqualsAndEndTimeGreaterThanEqual(symbol, df.parse(date));
-        
+        Asset asset = null;
         
         try {
-        	cotationService.computeCotations(symbol, Period._6j);	        	
-//        	initEvaluationForLastCotations("CYBRO", Period._6j, 2, Period._12h, Period._1h);
         	
-//        	cotationService.initEvaluationForCotations(asset, df.parse(date), true);
+	        Map<String, String> params = getParameters(args);
+	        
+	        if (params != null && params.get("symbol") != null) {
+				symbol = params.get("symbol");
+//				platform =  params.get("platform");
+//				asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
+//				
+//				cotationService.initEvaluationForCotations(asset, df.parse(date), false);
+				
+//		        cotationService.evaluateLastCotations(asset);
+			}
+
+      
+
+//        	cotationService.computeCotations(symbol, Period._6j);	        	
         	
-        	cotationService.recordEvaluationsForCotations(dbCotations, asset, assetConfigList);
+        	
+//            if (asset != null) {
+//    	        List<Cotation> dbCotations = cotationService.getCryptobotRepository().getCotationsSinceDate(symbol, df.parse(date));
+//    	        List<AssetConfig> assetConfigList = cotationService.getCryptobotRepository().getAssetConfigRepository().findBySymbolEqualsAndEndTimeGreaterThanEqual(symbol, df.parse(date));
+//            	cotationService.recordEvaluationsForCotations(dbCotations, asset, assetConfigList);
+//            }
         	
             logger.info("Fin du job: " + new Date());
             System.out.println("Fin du job: " + new Date());
