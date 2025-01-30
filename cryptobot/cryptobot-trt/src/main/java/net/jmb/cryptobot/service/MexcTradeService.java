@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 
 import net.jmb.cryptobot.beans.MexcOrder;
 import net.jmb.cryptobot.data.entity.AssetConfig;
@@ -33,7 +34,7 @@ public class MexcTradeService extends TradeService {
 	
 	
 	@Scheduled(cron = "${cryptobot.trade.evaluation.scheduler.cron}")
-	
+	@Transactional
 	public synchronized void evaluateTradeForLastCotation() throws Exception {
 		
 		asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);

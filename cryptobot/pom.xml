@@ -22,7 +22,7 @@
 	<modules>
 		<module>cryptobot-data</module>
 		<module>cryptobot-trt</module>
-		<module>cryptobot-webapp</module>
+<!--		<module>cryptobot-webapp</module>-->
 	</modules>
 
 	<dependencies>
