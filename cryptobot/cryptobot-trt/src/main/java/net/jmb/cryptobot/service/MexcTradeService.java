@@ -61,17 +61,11 @@ public class MexcTradeService extends TradeService {
 							Double quantity = freeAmount / lastPrice; 
 							trade = sendOrder(OrderSide.BUY, quantity, lastPrice);			
 						}
-						if (trade == null) {
-							cotation.flagBuy(null).currentSide(OrderSide.SELL);
-						}
 					} else if (cotation != null && "S".equalsIgnoreCase(cotation.getFlagSell())) {
 						Double quantity = restClientService.getFreeQuantity(symbol);
 						Double lastPrice = restClientService.getLastPrice(symbol);
 						if (lastPrice > 0d && quantity > 0d) {
 							trade = sendOrder(OrderSide.SELL, quantity, lastPrice);			
-						}
-						if (trade == null) {
-							cotation.flagSell(null).currentSide(OrderSide.BUY);
 						}
 					}
 					if (trade != null) {
