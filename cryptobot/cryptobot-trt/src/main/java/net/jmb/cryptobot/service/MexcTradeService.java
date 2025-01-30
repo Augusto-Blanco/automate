@@ -56,6 +56,10 @@ public class MexcTradeService extends TradeService {
 					
 					if (cotation != null && "B".equalsIgnoreCase(cotation.getFlagBuy())) {
 						Double freeAmount = restClientService.getFreeQuantity("USDT");
+						Double maxInvest = asset.getMaxInvest();
+						if (maxInvest != null && maxInvest > 0 && maxInvest < freeAmount) {
+							freeAmount = maxInvest;
+						}
 						Double lastPrice = restClientService.getLastPrice(symbol);
 						if (freeAmount > 0d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
 							Double quantity = freeAmount / lastPrice; 

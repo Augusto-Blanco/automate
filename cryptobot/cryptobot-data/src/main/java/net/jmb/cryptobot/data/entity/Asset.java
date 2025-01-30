@@ -30,8 +30,7 @@ public class Asset extends AbstractEntity implements Serializable {
 
 	private String platform;
 	private String symbol;
-	@Column(name = "qty")
-	private Double quantity;
+	private Double maxInvest;
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date startTime;
 	@Temporal(TemporalType.TIMESTAMP)
@@ -159,16 +158,16 @@ public class Asset extends AbstractEntity implements Serializable {
 		this.closeDate = closeDate;
 	}
 
-	public Double getQuantity() {
-		return quantity;
+	public Double getMaxInvest() {
+		return maxInvest;
 	}
 
-	public void setQuantity(Double quantity) {
-		this.quantity = quantity;
+	public void setMaxInvest(Double maxInvest) {
+		this.maxInvest = maxInvest;
 	}
 
-	public Asset quantity(Double quantity) {
-		this.quantity = quantity;
+	public Asset maxInvest(Double maxInvest) {
+		this.maxInvest = maxInvest;
 		return this;
 	}
 
