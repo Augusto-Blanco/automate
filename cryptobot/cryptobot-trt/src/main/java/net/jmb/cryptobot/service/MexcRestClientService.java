@@ -201,7 +201,7 @@ public class MexcRestClientService extends CommonService {
 		}
 		
 		queryParams.add("timestamp", "" + new Date().getTime());
-		queryParams.add("recvWindow", "15000");
+		queryParams.add("recvWindow", "30000");
 		
 		String queryString = UriComponentsBuilder.newInstance()
 			.queryParams(queryParams)
