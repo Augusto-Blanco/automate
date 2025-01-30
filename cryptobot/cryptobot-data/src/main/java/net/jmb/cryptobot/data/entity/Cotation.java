@@ -2,6 +2,7 @@ package net.jmb.cryptobot.data.entity;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Objects;
@@ -611,11 +612,21 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 
 
 		public void setQuantity(Double quantity) {
-			this.quantity = quantity;
+			if (quantity != null) {
+				BigDecimal decQty = BigDecimal.valueOf(quantity).setScale(7, RoundingMode.HALF_DOWN);
+				this.quantity = decQty.doubleValue();
+			} else {
+				this.quantity = quantity;
+			}
 		}
 		
 		public Cotation quantity(Double quantity) {
-			this.quantity = quantity;
+			if (quantity != null) {
+				BigDecimal decQty = BigDecimal.valueOf(quantity).setScale(7, RoundingMode.HALF_DOWN);
+				this.quantity = decQty.doubleValue();
+			} else {
+				this.quantity = quantity;
+			}
 			return this;
 		}
 

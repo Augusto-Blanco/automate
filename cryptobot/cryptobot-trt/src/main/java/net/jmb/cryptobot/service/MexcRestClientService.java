@@ -1,5 +1,6 @@
 package net.jmb.cryptobot.service;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -44,8 +45,7 @@ public class MexcRestClientService extends CommonService {
 
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })	
-	@Transactional
-	
+	@Transactional	
 	public List<Cotation> updateCotationsPrice(String symbol) throws Exception {		
 		
 		if (symbol != null && mexcRestTemplate != null) {
@@ -154,7 +154,7 @@ public class MexcRestClientService extends CommonService {
 	}
 	
 	@SuppressWarnings("serial")
-	public MexcOrder sendOrder(String symbol, OrderSide orderSide, Double quantity, Double price) {
+	public MexcOrder sendOrder(String symbol, OrderSide orderSide, BigDecimal quantity, BigDecimal price) {
 
 		if (mexcRestTemplate != null && symbol != null) {
 			
@@ -165,8 +165,8 @@ public class MexcRestClientService extends CommonService {
 					add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
 					add("side", orderSide.name());
 					add("type", "LIMIT");
-					add("quantity", "" + quantity);
-					add("price", "" + price);
+					add("quantity", "" + quantity.toPlainString());
+					add("price", "" + price.toPlainString());
 				}
 			};
 
@@ -201,6 +201,7 @@ public class MexcRestClientService extends CommonService {
 		}
 		
 		queryParams.add("timestamp", "" + new Date().getTime());
+		queryParams.add("recvWindow", "15000");
 		
 		String queryString = UriComponentsBuilder.newInstance()
 			.queryParams(queryParams)

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -20,23 +21,33 @@ import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.Period;
+import net.jmb.cryptobot.data.repository.CryptobotRepository;
 import net.jmb.cryptobot.enums.ParamContext;
+import net.jmb.cryptobot.util.PeriodUtil;
 
 @Service
-public class CotationService extends CryptobotService {
+public class CotationService extends CommonService {
 	
 	public static final ParamContext CONTEXTE = ParamContext.TOUT_CONTEXTE;
 	
+	@Autowired
+	CryptobotRepository cryptobotRepository;
+	
 	
 	@Transactional
-	public Cotation evaluateLastCotations(Asset asset) {
-		Cotation refCotation = cryptobotRepository.getLastRatedCotation(asset.getSymbol());
-		if (refCotation != null) {
-			return initEvaluationForCotations( asset, refCotation.getDatetime(), false);
-		} else {
-			refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), previousDateForPeriod(new Date(), Period._6j));
-			if (refCotation != null) {
-				return initEvaluationForCotations( asset, refCotation.getDatetime(), true);
+	public Cotation evaluateLastCotations(Asset asset, Date initDate) {
+		
+		if (initDate != null) {			
+			return initEvaluationForCotations( asset, initDate, true);			
+		} else {			
+			Cotation refCotation = cryptobotRepository.getLastRatedCotation(asset.getSymbol());
+			if (refCotation != null) {		
+				return initEvaluationForCotations( asset, refCotation.getDatetime(), false);				
+			} else {
+				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), Period._6j));
+				if (refCotation != null) {
+					return initEvaluationForCotations( asset, refCotation.getDatetime(), true);
+				}
 			}
 		}
 		return null;
@@ -67,8 +78,13 @@ public class CotationService extends CryptobotService {
 			if (refCotation != null) {
 
 				dateRef = refCotation.getDatetime();
+				Date startDate = PeriodUtil.previousDateForPeriod(dateRef, analysisPeriod);
+				
 				// pour initialiser l'achat on prend 2 fois la période d'analyse afin de déterminer le moment optimum d'achat AVANT le début de l'analyse
-				Date startDate = previousDateForPeriod(previousDateForPeriod(dateRef, analysisPeriod), analysisPeriod);
+				if (reset) {
+					startDate = PeriodUtil.previousDateForPeriod(startDate, analysisPeriod);
+				}
+				
 				List<Cotation> dbCotations = cryptobotRepository.getCotationsSinceDate(symbol, startDate);
 				// traitement sur liste copiée car pas de màj en base
 				List<Cotation> cotations = new ArrayList<>(dbCotations.stream().map(Cotation::duplicate).toList()); 
@@ -84,13 +100,15 @@ public class CotationService extends CryptobotService {
 					List<Cotation> cotationGrid = getCotationGridOnPeriodForward(cotation, cotations, analysisPeriod);
 					
 					// détermination cotation optimale à l'achat avant période d'analyse (prix minimum)
-					Cotation minCotation = cotationGrid.stream().reduce( 
-						(cot1, cot2) -> cot1.getPrice() < cot2.getPrice() ? cot1 : cot2
-					).orElse(null);
-					
-					if (minCotation != null) {
-						startIndex = cotations.indexOf(minCotation);
-						minCotation.resetEvaluation();
+					if (reset) {
+						Cotation minCotation = cotationGrid.stream().reduce( 
+							(cot1, cot2) -> cot1.getPrice() < cot2.getPrice() ? cot1 : cot2
+						).orElse(null);
+						
+						if (minCotation != null) {
+							startIndex = cotations.indexOf(minCotation);
+							minCotation.resetEvaluation();
+						}
 					}
 					
 					// détermination grille d'analyse : celle qui précède juste la cotation de référence
@@ -231,7 +249,7 @@ public class CotationService extends CryptobotService {
 			Double maxStopLoss = asset.getStopLossLimit().doubleValue();
 			
 			BigDecimal amountB100 = null;
-			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = 2d;
+			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = 1d;
 			Double bestVarHigh = null, bestVarLow = null, bestStopLoss = null;
 
 			while (stopLoss <= maxStopLoss) {
@@ -315,7 +333,11 @@ public class CotationService extends CryptobotService {
 			for (int i = 0; i < cotationGrid.size(); i++) {
 				
 				cotation = cotationGrid.get(i);
-				cotation.flagBuy(null).flagSell(null);
+				
+				if (i > 0) {
+					cotation.flagBuy(null).flagSell(null);
+				}
+				
 				if (currentSide == null && StringUtils.isBlank(cotation.getCurrentSide())) {
 					Double price = cotation.getPrice();
 					amountB100 = 100d;
@@ -352,70 +374,76 @@ public class CotationService extends CryptobotService {
 					}
 				}
 				
-				if (currentSide.equals(OrderSide.BUY)) {
-					Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
-					Double deltaFromBestBuy = (cotation.getPrice() - bestBuyPrice) / bestBuyPrice * 100;
-					amountB100 = quantity * cotation.getPrice();
-					boolean isDelayOK = (lastBuy == null || cotation.getDatetime().getTime() - lastBuy.getTime() > delayBetweenTrades);
-					if (deltaFromBestBuy > maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
-						currentSide = OrderSide.SELL;	
-						quantity = 0d;
-						amountB100 = amountB100 * (1 - fees);
-						sellPrice = cotation.getPrice();
-						bestSellPrice = cotation.getPrice();
-						cotation.flagSell();
-						lastSell = cotation.getDatetime();
-						
-						if (realEval) {
-							cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
-									.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
-							String message = "-- Vente ";
-							if (deltaPrice <= -stopLoss) {
-								message += "stopLoss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
-							} else {
-								message += "takeProfit " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN);
-							}
-							getLogger().info(message);
-							getLogger().info(cotation.toString());
-							getLogger().info("");
-						}
-					}
-
-				} else if (currentSide.equals(OrderSide.SELL)) {
-					Double deltaFromBestSell = (cotation.getPrice() - bestSellPrice) / bestSellPrice * 100;
-					boolean isDelayOK = (lastSell == null || cotation.getDatetime().getTime() - lastSell.getTime() > delayBetweenTrades);
-						
-					if (deltaFromBestSell < -maxVarLow && isDelayOK) {
-						currentSide = OrderSide.BUY;
-						buyPrice = cotation.getPrice();
-						bestBuyPrice = cotation.getPrice();
-						amountB100 = amountB100 * (1 - fees);
-						quantity = amountB100 / cotation.getPrice();
-						cotation.flagBuy();
-						lastBuy = cotation.getDatetime();
-						
-						if (realEval) {
-							cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
-									.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
-							String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);							
-							getLogger().info(message);
-							getLogger().info(cotation.toString());
-							getLogger().info("");
-						}						
-					}
-				}				
-				if (bestBuyPrice == null || cotation.getPrice() < bestBuyPrice) {
-					bestBuyPrice = cotation.getPrice();
-				}
-				if (bestSellPrice == null || cotation.getPrice() > bestSellPrice) {
-					bestSellPrice = cotation.getPrice();
-				}	
-				
+				// évaluation achat-vente uniquement si la cotation n'est pas celle de référence
 				// la cotation initiale est la référence de calcul pour les autres : elle ne doit pas être mise à jour
 				if (i > 0) {
+					
+					if (currentSide.equals(OrderSide.BUY)) {
+						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
+						Double deltaFromBestBuy = (cotation.getPrice() - bestBuyPrice) / bestBuyPrice * 100;
+						amountB100 = quantity * cotation.getPrice();
+						boolean isDelayOK = (lastBuy == null || cotation.getDatetime().getTime() - lastBuy.getTime() > delayBetweenTrades);
+						if (deltaFromBestBuy > maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
+							currentSide = OrderSide.SELL;	
+							quantity = 0d;
+							amountB100 = amountB100 * (1 - fees);
+							sellPrice = cotation.getPrice();
+							bestSellPrice = cotation.getPrice();
+							cotation.flagSell();
+							lastSell = cotation.getDatetime();
+							
+							if (realEval) {
+								cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
+										.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+								String message = "-- Vente ";
+								if (deltaPrice <= -stopLoss) {
+									message += "stopLoss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
+								} else {
+									message += "takeProfit " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN);
+								}
+								getLogger().info(message);
+								getLogger().info(cotation.toString());
+								getLogger().info("");
+							}
+						}
+	
+					} else if (currentSide.equals(OrderSide.SELL)) {
+						Double deltaFromBestSell = (cotation.getPrice() - bestSellPrice) / bestSellPrice * 100;
+						boolean isDelayOK = (lastSell == null || cotation.getDatetime().getTime() - lastSell.getTime() > delayBetweenTrades);
+							
+						if (deltaFromBestSell < -maxVarLow && isDelayOK) {
+							currentSide = OrderSide.BUY;
+							buyPrice = cotation.getPrice();
+							bestBuyPrice = cotation.getPrice();
+							amountB100 = amountB100 * (1 - fees);
+							quantity = amountB100 / cotation.getPrice();
+							cotation.flagBuy();
+							lastBuy = cotation.getDatetime();
+							
+							if (realEval) {
+								cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
+										.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+								String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);							
+								getLogger().info(message);
+								getLogger().info(cotation.toString());
+								getLogger().info("");
+							}						
+						}
+					}
+					
+					if (bestBuyPrice == null || cotation.getPrice() < bestBuyPrice) {
+						bestBuyPrice = cotation.getPrice();
+					}
+					if (bestSellPrice == null || cotation.getPrice() > bestSellPrice) {
+						bestSellPrice = cotation.getPrice();
+					}	
+
 					cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
 							.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+				
 				}
+				
+
 			}
 			
 		}		
@@ -449,7 +477,7 @@ public class CotationService extends CryptobotService {
 				}
 			}
 			
-			List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod((lastTime != null ? lastTime : new Date()), Period._6j));
+			List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, PeriodUtil.previousDateForPeriod((lastTime != null ? lastTime : new Date()), Period._6j));
 						
 			if (allCotations != null) {
 				
@@ -474,6 +502,11 @@ public class CotationService extends CryptobotService {
 	}
 	
 	
+	public CryptobotRepository getCryptobotRepository() {
+		return cryptobotRepository;
+	}
+
+
 	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
 		AssetConfig assetConfig = cryptobotRepository.getAssetConfigForCotation(cotation);		
 		return assetConfig;
@@ -483,7 +516,7 @@ public class CotationService extends CryptobotService {
 	@Transactional
 	public List<Cotation> computeCotations(String symbol, Period period) {
 		
-		List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod(null, period));
+		List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, PeriodUtil.previousDateForPeriod(null, period));
 		
 		if (allCotations != null) {
 			
@@ -594,7 +627,7 @@ public class CotationService extends CryptobotService {
 			allCotations.add(refCotation);
 			endIndex = allCotations.size()-1;
 		}
-		Date previousDate = previousDateForPeriod(refCotation.getDatetime(), period);
+		Date previousDate = PeriodUtil.previousDateForPeriod(refCotation.getDatetime(), period);
 		if (previousDate != null) {
 			startIndex = findIndexForDate(allCotations, previousDate, refCotation.getSymbol());
 		}
@@ -611,7 +644,7 @@ public class CotationService extends CryptobotService {
 		Collections.sort(allCotations);
 		int startIndex = allCotations.indexOf(refCotation);
 		if (startIndex >= 0) {
-			Date nextDate = nextDateForPeriod(refCotation.getDatetime(), period);
+			Date nextDate = PeriodUtil.nextDateForPeriod(refCotation.getDatetime(), period);
 			if (nextDate != null) {
 				endIndex = findIndexForDate(allCotations, nextDate, refCotation.getSymbol());
 			}
@@ -630,7 +663,7 @@ public class CotationService extends CryptobotService {
 			allCotations.add(refCotation);
 			endIndex = allCotations.size()-1;
 		}
-		Date previousDate = previousDateForPeriod(refCotation.getDatetime(), period);
+		Date previousDate = PeriodUtil.previousDateForPeriod(refCotation.getDatetime(), period);
 		if (previousDate != null) {
 			index = findIndexForDate(allCotations, previousDate, refCotation.getSymbol());
 		}
@@ -646,7 +679,7 @@ public class CotationService extends CryptobotService {
 		int startIndex = allCotations.indexOf(refCotation);
 		if (startIndex >= 0) {
 
-			Date nextDate = nextDateForPeriod(refCotation.getDatetime(), period);
+			Date nextDate = PeriodUtil.nextDateForPeriod(refCotation.getDatetime(), period);
 			if (nextDate != null) {
 				index = findIndexForDate(allCotations, nextDate, refCotation.getSymbol());
 			}

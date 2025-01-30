@@ -4,21 +4,16 @@ import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.Sort.Order;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import net.jmb.cryptobot.data.bean.AssetQO;
-import net.jmb.cryptobot.data.bean.OrderQO;
-import net.jmb.cryptobot.data.bean.PageData;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Trade;
 import net.jmb.cryptobot.data.enums.OrderState;
+import net.jmb.cryptobot.data.enums.Period;
+import net.jmb.cryptobot.util.PeriodUtil;
 
 @Repository
 @Transactional
@@ -59,6 +54,17 @@ public class CryptobotRepository extends GenericRepository {
 		return cotation;
 	}
 	
+	public List<Cotation> getAllCotationsSinceLastRated(String symbol) {
+		Cotation lastRated = getLastRatedCotation(symbol);
+		List<Cotation> allCotationsSinceLastRated = null;
+		if (lastRated != null) {
+			allCotationsSinceLastRated = getCotationsSinceDate(symbol, lastRated.getDatetime());
+		} else {
+			allCotationsSinceLastRated = getCotationsSinceDate(symbol, PeriodUtil.previousDateForPeriod(new Date(), Period._6j));
+		}
+		return allCotationsSinceLastRated;
+	}
+	
 	
 	public Cotation getLastCotationBeforeDate(String symbol, Date dateRef) {
 		Cotation cotation = null;
@@ -84,15 +90,18 @@ public class CryptobotRepository extends GenericRepository {
 				dateRef = new Date();
 			}
 			List<Cotation> cotations = cotationRepository.findMinPrice24hCotationForSymbolAfterDate(symbol, dateRef);
+			
 			if (cotations != null && cotations.size() > 0) {
-				cotation = cotations.get(cotations.size() - 1);
+				for (Cotation tmp : cotations) {
+					if (cotation == null || tmp.getMin24h() < cotation.getMin24h()) {
+						cotation = tmp;
+					}
+				}
 			}
 		}
 		return cotation;
 	}
-	
-
-	
+		
 	
 	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
 		AssetConfig assetConfig = null;
@@ -111,57 +120,35 @@ public class CryptobotRepository extends GenericRepository {
 		}		
 	}
 	
-	public void saveTrade(Trade trade) {
+	public Trade saveTrade(Trade trade) {
 		if (trade != null) {
-			tradeRepository.save(trade);
-		}		
-	}
-	
-
-	public PageData<Asset> getPageAssets(AssetQO assetQO, Pageable pageRequest) {
-		PageData<Asset> pageData = null;
-		if (pageRequest != null) {
-			pageData = getPageData(assetRepository.findByAssetQO(assetQO, pageRequest));
-		} else {
-			pageData = getPageData(assetRepository.findByAssetQO(assetQO));
+			return tradeRepository.save(trade);
 		}
-		return pageData;
+		return null;
 	}
 	
-	
-	public List<String> getListeTradeRefs(int maxNumber) {
-		List<String> listeTradeRefs = null;
-		Pageable pageable = getPageable(0, maxNumber, Sort.by(Order.desc("id")));
-		Page<String> pageTradeRefs = tradeRepository.findDistinctTradeRefs(pageable);
-		if (pageTradeRefs != null) {
-			listeTradeRefs = pageTradeRefs.getContent();
-		}
-		return listeTradeRefs;
-	}
 		
 	
 	public List<Trade> getTradesForAsset(Long assetId) {
 		return tradeRepository.findByAssetId(assetId);
 	}
 	
-	public PageData<Trade> getTradesForAsset(Long assetId, Pageable pageable) {
-		Page<Trade> contrats = tradeRepository.findByAssetId(assetId, pageable);
-		return getPageData(contrats);
-	}
-	
-	public PageData<Trade> getTrades(OrderQO contratQO, Pageable pageable) {
-		Page<Trade> contrats = tradeRepository.findByOrderQO(contratQO, pageable);
-		return getPageData(contrats);
-	}
 
+	
 	public Cotation getCotationForTrade(Long tradeId) {
 		Cotation cotation = cotationRepository.findByTradeId(tradeId);
 		return cotation;
 	}
 	
 
-		
-
+	public List<Trade> getPendingTrades() {
+		return tradeRepository.findByStateIn(List.of(OrderState.PENDING.name(), ""));
+	}
+	
+	
+	
+	
+	
 	public AssetRepository getAssetRepository() {
 		return assetRepository;
 	}
@@ -173,14 +160,6 @@ public class CryptobotRepository extends GenericRepository {
 	public CotationRepository getCotationRepository() {
 		return cotationRepository;
 	}
-	
-	
-
-	public List<Trade> getPendingTrades() {
-		return tradeRepository.findByStateIn(List.of(OrderState.PENDING.name(), ""));
-	}
-
-
 
 	public AssetConfigRepository getAssetConfigRepository() {
 		return assetConfigRepository;
