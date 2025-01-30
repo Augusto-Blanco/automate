@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -40,7 +41,7 @@ public abstract class TradeService extends CommonService implements CommandLineR
 		if (symbol != null) {
 			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
 			registerLastCotations();
-			evaluateLastCotations(this.initDate);
+			evaluateLastCotations();
 		}
 	}
 	
@@ -53,13 +54,16 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	public abstract Trade sendOrder(OrderSide orderSide, Double quantity, Double price);
 	
 	
-	@Transactional
-	public synchronized Cotation evaluateLastCotations(String initDate) throws Exception {		
+	@Transactional	
+	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")	
+	public synchronized Cotation evaluateLastCotations() throws Exception {
+		
 		asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);		
 		if (asset != null) {
 			Cotation lastCotation = cotationService.evaluateLastCotations(asset, StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null);
 			return lastCotation;
 		}
+		
 		return null;
 	}
 	

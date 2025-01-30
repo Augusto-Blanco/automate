@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import net.jmb.cryptobot.beans.MexcOrder;
+import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Trade;
 import net.jmb.cryptobot.data.enums.OrderSide;
@@ -44,15 +45,13 @@ public class MexcTradeService extends TradeService {
 			List<Cotation> lastCotations = registerLastCotations();			
 			if (lastCotations != null && lastCotations.size() > 0) {
 				
-//				lastCotations = cotationService.getCryptobotRepository().getAllCotationsSinceLastRated(symbol);
+				lastCotations = cotationService.getCryptobotRepository().getAllCotationsSinceLastRated(symbol);
 				
 				if (lastCotations != null && lastCotations.size() > 0) {
-//					Cotation cotation = lastCotations.get(lastCotations.size() - 1);
-//					AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);
-//	
-//					cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig);
-					
-					Cotation cotation = evaluateLastCotations(null);					
+					Cotation cotation = lastCotations.get(lastCotations.size() - 1);
+					AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);
+	
+					cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig);
 					
 					if (cotation != null && "B".equalsIgnoreCase(cotation.getFlagBuy())) {
 						Double freeAmount = restClientService.getFreeQuantity("USDT");
@@ -61,11 +60,17 @@ public class MexcTradeService extends TradeService {
 							Double quantity = freeAmount / lastPrice; 
 							trade = sendOrder(OrderSide.BUY, quantity, lastPrice);			
 						}
+						if (trade == null) {
+							cotation.flagBuy(null).currentSide(OrderSide.SELL);
+						}
 					} else if (cotation != null && "S".equalsIgnoreCase(cotation.getFlagSell())) {
 						Double quantity = restClientService.getFreeQuantity(symbol);
 						Double lastPrice = restClientService.getLastPrice(symbol);
 						if (lastPrice > 0d && quantity > 0d) {
 							trade = sendOrder(OrderSide.SELL, quantity, lastPrice);			
+						}
+						if (trade == null) {
+							cotation.flagSell(null).currentSide(OrderSide.BUY);
 						}
 					}
 					if (trade != null) {
