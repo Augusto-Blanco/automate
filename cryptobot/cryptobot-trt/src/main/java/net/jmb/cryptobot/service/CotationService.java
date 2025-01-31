@@ -113,7 +113,9 @@ public class CotationService extends CommonService {
 					
 					// détermination grille d'analyse : celle qui précède juste la cotation de référence
 					int refIndex = cotations.indexOf(refCotation);
-					cotationGrid = cotations.subList(startIndex, refIndex + 1);					
+					if (startIndex < refIndex) {		
+						cotationGrid = cotations.subList(startIndex, refIndex + 1);					
+					}
 
 					while (cotationGrid != null && cotationGrid.size() > 1) {
 						AssetConfig bestAssetConfig = evaluateAssetConfigForCotations(cotationGrid, asset);
