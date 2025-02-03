@@ -52,12 +52,12 @@ public class MexcTradeService extends TradeService {
 					Cotation cotation = lastCotations.get(lastCotations.size() - 1);
 					AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);
 	
-					cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig);
+					cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.realEval(true));
 					
 					if (cotation != null && "B".equalsIgnoreCase(cotation.getFlagBuy())) {
 						Double freeAmount = restClientService.getFreeQuantity("USDT");
 						Double maxInvest = asset.getMaxInvest();
-						if (maxInvest != null && maxInvest > 0 && maxInvest < freeAmount) {
+						if (maxInvest != null && maxInvest > 0d && maxInvest < freeAmount) {
 							freeAmount = maxInvest;
 						}
 						Double lastPrice = restClientService.getLastPrice(symbol);

@@ -47,6 +47,8 @@ public class Asset extends AbstractEntity implements Serializable {
 	private String analysisPeriod;
 	private String frequency;	
 	private BigDecimal perf;
+	private Double gapFromTrend;
+	
 	@OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@JsonIgnore
 	private List<Trade> trades;
@@ -300,6 +302,22 @@ public class Asset extends AbstractEntity implements Serializable {
 	public Asset frequency(String frequency) {
 		this.frequency = frequency;
 		return this;
+	}
+
+	
+	public Asset gapFromTrend(Double gapFromTrend) {
+		this.gapFromTrend = gapFromTrend;
+		return this;
+	}
+
+
+	public Double getGapFromTrend() {
+		return gapFromTrend;
+	}
+
+
+	public void setGapFromTrend(Double gapFromTrend) {
+		this.gapFromTrend = gapFromTrend;
 	}
 
 }

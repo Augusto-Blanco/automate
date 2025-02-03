@@ -82,6 +82,25 @@ public class CryptobotRepository extends GenericRepository {
 	}
 	
 	
+	public Cotation getLastSellCotationBeforeBuyAndDate(String symbol, Date dateRef) {
+		Cotation cotation = null;
+		
+		if (symbol != null) {
+			if (dateRef == null) {
+				dateRef = new Date();
+			}
+			try {
+				List<Cotation> lastCotations = cotationRepository.findLastSellCotationBeforeBuy(symbol, dateRef);
+				if (lastCotations != null && lastCotations.size() > 0) {
+					cotation = lastCotations.get(lastCotations.size() - 1);
+				}
+			} catch (Exception e) {}
+		}
+		return cotation;
+	}
+	
+	
+	
 	public Cotation getMin24hCotationAfterDate(String symbol, Date dateRef) {
 		Cotation cotation = null;
 		

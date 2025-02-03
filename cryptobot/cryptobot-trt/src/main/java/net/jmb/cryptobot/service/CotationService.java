@@ -182,63 +182,6 @@ public class CotationService extends CommonService {
 
 
 
-//	@Transactional
-//	public Cotation evaluateTradesForCotations(Asset asset, Date dateRef, Boolean init, Period analysisPeriod, Period frequency) {
-//		
-//		Cotation cotation = null;
-//		
-//		if (asset != null && asset.getSymbol() != null) {
-//			
-//			String symbol = asset.getSymbol();			
-//			boolean reset = init != null ? init : false;
-//			
-//			Period subPeriod = (analysisPeriod != null) ? analysisPeriod : Period._12h;
-//			Period interval = (frequency != null) ? frequency : Period._1h;
-//			
-//			Cotation refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef);
-//			
-//			if (refCotation != null) {
-//
-//				dateRef = refCotation.getDatetime();
-//				if (reset) {
-//					refCotation.resetEvaluation();
-//				}
-//
-//				Date startDate = previousDateForPeriod(dateRef, subPeriod);
-//				List<Cotation> dbCotations = cryptobotRepository.getCotationsSinceDate(symbol, startDate);
-//
-//				if (dbCotations != null && dbCotations.size() > 0) {
-//
-//					cotation = dbCotations.get(0);
-//					List<Cotation> dbCotationGrid = getCotationGridOnPeriodForward(cotation, dbCotations, subPeriod);
-//					int refIndex = dbCotationGrid.indexOf(refCotation);
-//					if (refIndex > -1) {
-//						dbCotationGrid = dbCotationGrid.subList(0, refIndex + 1);
-//					}
-//					List<Cotation> cotationGrid = new ArrayList<>(dbCotationGrid.stream().map(Cotation::duplicate).toList());
-//
-//					while (dbCotationGrid != null && dbCotationGrid.size() > 1) {
-//
-//						AssetConfig bestAssetConfig = evaluateAssetConfigForCotations(cotationGrid, asset);
-//						cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(symbol, bestAssetConfig.getStartTime());
-//						cryptobotRepository.getAssetConfigRepository().save(bestAssetConfig);
-//
-//						cotation = dbCotationGrid.get(dbCotationGrid.size() - 1);
-//						dbCotationGrid = getCotationGridOnPeriodForward(cotation, dbCotations, interval);
-//						if (dbCotationGrid != null && dbCotationGrid.size() > 1) {
-//							cotation = evaluateTradesForCotations(dbCotationGrid, asset, bestAssetConfig.realEval(true));
-//							dbCotationGrid = getCotationGridOnPeriodBackward(cotation, dbCotations, subPeriod);
-//							cotationGrid = new ArrayList<>(dbCotationGrid.stream().map(Cotation::duplicate).toList());
-//						}
-//					}
-//
-//				}
-//			}
-//		}
-//		return cotation;
-//	}
-
-	
 	public AssetConfig evaluateAssetConfigForCotations(List<Cotation> cotationGrid, Asset asset) {
 		
 		Cotation cotation = null;
@@ -327,7 +270,7 @@ public class CotationService extends CommonService {
 		
 		if (cotationGrid != null) {
 			
-			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, buyPrice = null, quantity = null, amountB100 = null;
+			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, prevBestBuyPrice = null, buyPrice = null, quantity = null, amountB100 = null;
 			OrderSide currentSide = null;
 			Date lastBuy = null, lastSell = null;
 			
@@ -344,8 +287,8 @@ public class CotationService extends CommonService {
 					Double price = cotation.getPrice();
 					amountB100 = 100d;
 					quantity = amountB100 / price;
-					cotation.flagBuy().currentSide(OrderSide.BUY).buyPrice(price).bestBuyPrice(price).sellPrice(null).bestSellPrice(null)
-							.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100));
+					cotation.flagBuy().currentSide(OrderSide.BUY).buyPrice(price).bestBuyPrice(price).prevBestBuyPrice(price)
+							.sellPrice(null).bestSellPrice(null).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100));
 					lastBuy = cotation.getDatetime();
 				}
 				if (currentSide == null) {
@@ -362,6 +305,9 @@ public class CotationService extends CommonService {
 				}
 				if (bestBuyPrice == null) {
 					bestBuyPrice = cotation.getBestBuyPrice();
+				}
+				if (prevBestBuyPrice == null) {
+					prevBestBuyPrice = cotation.getPrevBestBuyPrice();
 				}
 				if (bestSellPrice == null) {
 					bestSellPrice = cotation.getBestSellPrice();
@@ -414,22 +360,27 @@ public class CotationService extends CommonService {
 						boolean isDelayOK = (lastSell == null || cotation.getDatetime().getTime() - lastSell.getTime() > delayBetweenTrades);
 							
 						if (deltaFromBestSell < -maxVarLow && isDelayOK) {
-							currentSide = OrderSide.BUY;
-							buyPrice = cotation.getPrice();
-							bestBuyPrice = cotation.getPrice();
-							amountB100 = amountB100 * (1 - fees);
-							quantity = amountB100 / cotation.getPrice();
-							cotation.flagBuy();
-							lastBuy = cotation.getDatetime();
 							
-							if (realEval) {
-								cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
-										.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
-								String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);							
-								getLogger().info(message);
-								getLogger().info(cotation.toString());
-								getLogger().info("");
-							}						
+							if (isTrendOK(cotation, asset, prevBestBuyPrice, realEval)) {
+								
+								currentSide = OrderSide.BUY;
+								buyPrice = cotation.getPrice();
+								prevBestBuyPrice = bestBuyPrice;
+								bestBuyPrice = cotation.getPrice();
+								amountB100 = amountB100 * (1 - fees);
+								quantity = amountB100 / cotation.getPrice();
+								cotation.flagBuy();
+								lastBuy = cotation.getDatetime();
+								
+								if (realEval) {
+									cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
+											.prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+									String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);							
+									getLogger().info(message);
+									getLogger().info(cotation.toString());
+									getLogger().info("");
+								}	
+							}
 						}
 					}
 					
@@ -441,15 +392,41 @@ public class CotationService extends CommonService {
 					}	
 
 					cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
-							.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+							.prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
 				
 				}
-				
-
-			}
-			
+			}			
 		}		
 		return cotation;
+	}
+	
+	
+	private boolean isTrendOK(Cotation cotation, Asset asset, Double prevBestBuyPrice, boolean realEval) {
+		boolean trendOK = true;
+		if (OrderSide.SELL.equals(cotation.getCurrentOrderSide())) {
+			Double gapFromTrend = asset.getGapFromTrend();
+			if (gapFromTrend != null && gapFromTrend > 0) {
+				if (prevBestBuyPrice != null && cotation.getBestBuyPrice() != null) {
+					Double actualBestBuyPrice = cotation.getBestBuyPrice();
+					Double trend = (actualBestBuyPrice - prevBestBuyPrice) / prevBestBuyPrice;
+					Double theoricBuyPrice;
+					if (trend > 0) {
+						theoricBuyPrice = actualBestBuyPrice * trend;
+					} else {
+						theoricBuyPrice = actualBestBuyPrice;
+					}
+					Double price = cotation.getPrice();
+					Double gapBetweenPrices = (price - theoricBuyPrice) / theoricBuyPrice * 100;
+					if (gapBetweenPrices > gapFromTrend) {
+						trendOK = false;
+					} else if (realEval) {
+						String strGap = BigDecimal.valueOf(gapBetweenPrices).setScale(1,RoundingMode.HALF_EVEN).toString() + "%";
+						getLogger().info("Trend OK : gap with best buy price " + theoricBuyPrice + " : " + strGap + "  => BUY flag for " + cotation);
+					}
+				}				
+			}
+		}
+		return trendOK;
 	}
 	
 	
