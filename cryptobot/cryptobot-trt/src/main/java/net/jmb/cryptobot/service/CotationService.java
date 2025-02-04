@@ -326,6 +326,9 @@ public class CotationService extends CommonService {
 				// la cotation initiale est la référence de calcul pour les autres : elle ne doit pas être mise à jour
 				if (i > 0) {
 					
+					cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
+							.prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+					
 					if (currentSide.equals(OrderSide.BUY)) {
 						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
 						Double deltaFromBestBuy = (cotation.getPrice() - bestBuyPrice) / bestBuyPrice * 100;
@@ -336,13 +339,13 @@ public class CotationService extends CommonService {
 							quantity = 0d;
 							amountB100 = amountB100 * (1 - fees);
 							sellPrice = cotation.getPrice();
-							bestSellPrice = cotation.getPrice();
+							if (deltaFromBestBuy > maxVarHigh) {
+								bestSellPrice = cotation.getPrice();
+							}
 							cotation.flagSell();
 							lastSell = cotation.getDatetime();
 							
 							if (realEval) {
-								cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
-										.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
 								String message = "-- Vente ";
 								if (deltaPrice <= -stopLoss) {
 									message += "stopLoss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
@@ -359,9 +362,13 @@ public class CotationService extends CommonService {
 						Double deltaFromBestSell = (cotation.getPrice() - bestSellPrice) / bestSellPrice * 100;
 						boolean isDelayOK = (lastSell == null || cotation.getDatetime().getTime() - lastSell.getTime() > delayBetweenTrades);
 							
-						if (deltaFromBestSell < -maxVarLow && isDelayOK) {
+						if (deltaFromBestSell < -maxVarLow && isDelayOK) {	
 							
-							if (isTrendOK(cotation, asset, prevBestBuyPrice, realEval)) {
+							boolean isStopLoss = cotation.getBuyPrice() - (cotation.getSellPrice() != null ? cotation.getSellPrice() : 0d) > 0;
+							boolean isTrendOK = isTrendOK(cotation, asset, realEval);
+							boolean isPositiveVar = (cotation.getVar15m() != null && cotation.getVar15m().compareTo(BigDecimal.ZERO) > 0 );
+							
+							if (!isStopLoss && isTrendOK || isPositiveVar) {
 								
 								currentSide = OrderSide.BUY;
 								buyPrice = cotation.getPrice();
@@ -373,9 +380,10 @@ public class CotationService extends CommonService {
 								lastBuy = cotation.getDatetime();
 								
 								if (realEval) {
-									cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
-											.prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
-									String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);							
+									String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);
+									message		  += "-- Suite stop loss : " + isStopLoss + "\n";
+									message 	  += "-- Trend OK        : " + isTrendOK + "\n";
+									message 	  += "-- Positive var°   : " + isPositiveVar + "\n";
 									getLogger().info(message);
 									getLogger().info(cotation.toString());
 									getLogger().info("");
@@ -401,11 +409,12 @@ public class CotationService extends CommonService {
 	}
 	
 	
-	private boolean isTrendOK(Cotation cotation, Asset asset, Double prevBestBuyPrice, boolean realEval) {
+	private boolean isTrendOK(Cotation cotation, Asset asset, boolean realEval) {
 		boolean trendOK = true;
 		if (OrderSide.SELL.equals(cotation.getCurrentOrderSide())) {
 			Double gapFromTrend = asset.getGapFromTrend();
 			if (gapFromTrend != null && gapFromTrend > 0) {
+				Double prevBestBuyPrice = cotation.getPrevBestBuyPrice();
 				if (prevBestBuyPrice != null && cotation.getBestBuyPrice() != null) {
 					Double actualBestBuyPrice = cotation.getBestBuyPrice();
 					Double trend = (actualBestBuyPrice - prevBestBuyPrice) / prevBestBuyPrice;
@@ -419,9 +428,6 @@ public class CotationService extends CommonService {
 					Double gapBetweenPrices = (price - theoricBuyPrice) / theoricBuyPrice * 100;
 					if (gapBetweenPrices > gapFromTrend) {
 						trendOK = false;
-					} else if (realEval) {
-						String strGap = BigDecimal.valueOf(gapBetweenPrices).setScale(1,RoundingMode.HALF_EVEN).toString() + "%";
-						getLogger().info("Trend OK : gap with best buy price " + theoricBuyPrice + " : " + strGap + "  => BUY flag for " + cotation);
 					}
 				}				
 			}

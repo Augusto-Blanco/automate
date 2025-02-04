@@ -588,8 +588,9 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 		@Override
 		public String toString() {
 			String date = (datetime != null) ? new SimpleDateFormat("dd/MM HH:mm").format(datetime) : null;
-			return "Cotation [" + symbol + " " + date + ": price=" + price + ", side=" + currentSide + ", quantity=" + quantity + ", amountB100=" + amountB100
-				+ ", buyPrice=" + buyPrice + ", bestBuyPrice=" + bestBuyPrice + ", sellPrice=" + sellPrice + ", bestSellPrice=" + bestSellPrice + "]";
+			return "Cotation [" + symbol + " " + date + ": price=" + price + ", side=" + currentSide + ", buyPrice=" + buyPrice 
+					+ ", bestBuyPrice=" + bestBuyPrice + ", prevBestBuy=" + prevBestBuyPrice + ", sellPrice=" + sellPrice 
+					+ ", bestSellPrice=" + bestSellPrice + ", quantity=" + quantity + ", amountB100=" + amountB100 + "]";
 		}
 
 
