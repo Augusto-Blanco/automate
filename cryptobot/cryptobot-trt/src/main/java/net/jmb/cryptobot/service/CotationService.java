@@ -74,7 +74,7 @@ public class CotationService extends CommonService {
 			Assert.isTrue(frequencyPeriod.compareTo(analysisPeriod) < 0, "La fréquence d'évaluation doit être strictement inférieure à la période d'analyse");
 			
 			Cotation refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef);
-			
+
 			if (refCotation != null) {
 
 				dateRef = refCotation.getDatetime();
@@ -83,6 +83,11 @@ public class CotationService extends CommonService {
 				// pour initialiser l'achat on prend 2 fois la période d'analyse afin de déterminer le moment optimum d'achat AVANT le début de l'analyse
 				if (reset) {
 					startDate = PeriodUtil.previousDateForPeriod(startDate, analysisPeriod);
+				} else {
+					Cotation lastSellCotationBefore = cryptobotRepository.getLastSellCotationBeforeDate(symbol, startDate);
+					if (lastSellCotationBefore != null) {
+						startDate = lastSellCotationBefore.getDatetime();
+					}
 				}
 				
 				List<Cotation> dbCotations = cryptobotRepository.getCotationsSinceDate(symbol, startDate);
@@ -96,11 +101,13 @@ public class CotationService extends CommonService {
 					cotation = cotations.get(0);
 					int startIndex = 0;
 					
-					// période juste avant la période d'analyse
-					List<Cotation> cotationGrid = getCotationGridOnPeriodForward(cotation, cotations, analysisPeriod);
+					List<Cotation> cotationGrid = null;
 					
-					// détermination cotation optimale à l'achat avant période d'analyse (prix minimum)
-					if (reset) {
+					if (reset) {						
+						// période juste avant la période d'analyse
+						cotationGrid = getCotationGridOnPeriodForward(cotation, cotations, analysisPeriod);
+						
+						// détermination cotation optimale à l'achat avant période d'analyse (prix minimum)
 						Cotation minCotation = cotationGrid.stream().reduce( 
 							(cot1, cot2) -> cot1.getPrice() < cot2.getPrice() ? cot1 : cot2
 						).orElse(null);
@@ -381,9 +388,9 @@ public class CotationService extends CommonService {
 								
 								if (realEval) {
 									String message = "-- Achat delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN);
-									message		  += "-- Suite stop loss : " + isStopLoss + "\n";
-									message 	  += "-- Trend OK        : " + isTrendOK + "\n";
-									message 	  += "-- Positive var°   : " + isPositiveVar + "\n";
+									message		  += "-- Stop loss   : " + isStopLoss + "\n";
+									message 	  += "-- Trend OK    : " + isTrendOK + "\n";
+									message 	  += "-- Var° 15 min : " + cotation.getVar15m() + "\n";
 									getLogger().info(message);
 									getLogger().info(cotation.toString());
 									getLogger().info("");
@@ -428,6 +435,10 @@ public class CotationService extends CommonService {
 					Double gapBetweenPrices = (price - theoricBuyPrice) / theoricBuyPrice * 100;
 					if (gapBetweenPrices > gapFromTrend) {
 						trendOK = false;
+					} else if (realEval) {
+						String msg = "Price " + price + " vs Theoric price " + theoricBuyPrice + " => Gap " + gapBetweenPrices + " = Trend OK" + "\n";
+						msg 	  += "For " + cotation + "\n";
+						getLogger().info(msg);
 					}
 				}				
 			}

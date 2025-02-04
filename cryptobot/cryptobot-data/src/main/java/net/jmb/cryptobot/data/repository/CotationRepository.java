@@ -33,16 +33,11 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 			+ 	"	where b.symbol = :symbol and b.datetime <= :maxDate "
 			+	")";
 	
-	public static final String LAST_SELL_COTATION_BEFORE_BUY_QUERY = 		
+	public static final String LAST_SELL_COTATION_BEFORE_DATE_QUERY = 		
 			"select a from Cotation a "
 		+   "where a.symbol = :symbol and a.currentSide = 'SELL' and a.datetime = ( "
 		+   "	select max(b.datetime) from Cotation b "
-		+	"	where b.symbol = :symbol and b.currentSide = 'SELL' and b.datetime < :date "
-		+	"	and exists ( "
-		+	"		select id from Cotation c " 
-		+	"		where c.symbol = :symbol and c.currentSide = 'BUY' and c.datetime < :date "
-		+	"		and c.datetime > b.datetime "
-		+	"	)"
+		+	"	where b.symbol = :symbol and b.currentSide = 'SELL' and b.datetime <= :date "
 		+	")";
 	
 
@@ -65,8 +60,8 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 	@Query(LAST_COTATION_FOR_SYMBOL_QUERY)
 	List<Cotation> findLastCotationForSymbolBeforeDate(String symbol, Date maxDate);
 	
-	@Query(LAST_SELL_COTATION_BEFORE_BUY_QUERY)
-	List<Cotation> findLastSellCotationBeforeBuy(String symbol, Date date);
+	@Query(LAST_SELL_COTATION_BEFORE_DATE_QUERY)
+	List<Cotation> findLastSellCotationBeforeDate(String symbol, Date date);
 	
 	@Query(MIN_PRICE_24H_COTATION_QUERY)
 	List<Cotation> findMinPrice24hCotationForSymbolAfterDate(String symbol, Date startDate);

@@ -82,7 +82,7 @@ public class CryptobotRepository extends GenericRepository {
 	}
 	
 	
-	public Cotation getLastSellCotationBeforeBuyAndDate(String symbol, Date dateRef) {
+	public Cotation getLastSellCotationBeforeDate(String symbol, Date dateRef) {
 		Cotation cotation = null;
 		
 		if (symbol != null) {
@@ -90,7 +90,7 @@ public class CryptobotRepository extends GenericRepository {
 				dateRef = new Date();
 			}
 			try {
-				List<Cotation> lastCotations = cotationRepository.findLastSellCotationBeforeBuy(symbol, dateRef);
+				List<Cotation> lastCotations = cotationRepository.findLastSellCotationBeforeDate(symbol, dateRef);
 				if (lastCotations != null && lastCotations.size() > 0) {
 					cotation = lastCotations.get(lastCotations.size() - 1);
 				}
