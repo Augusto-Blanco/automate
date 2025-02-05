@@ -37,6 +37,7 @@ public abstract class TradeService extends CommonService implements CommandLineR
 
 	
 	@Override
+	@Transactional	
 	public synchronized void run(String... args) throws Exception {
 		
 		if (symbol != null) {

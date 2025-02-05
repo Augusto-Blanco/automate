@@ -40,14 +40,16 @@ public class Asset extends AbstractEntity implements Serializable {
 	private Date closeDate;
 	private Integer nbDecimals;
 	private Integer tradeDelay;
-	private Integer varLowLimit;
-	private Integer varHighLimit;
+	private Double varLowLimit;
+	private Double varHighLimit;
 	private Integer stopLossLimit;
 	private BigDecimal feesRate;
 	private String analysisPeriod;
 	private String frequency;	
 	private BigDecimal perf;
 	private Double gapFromTrend;
+	private Integer nbLoss;
+	
 	
 	@OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@JsonIgnore
@@ -199,22 +201,7 @@ public class Asset extends AbstractEntity implements Serializable {
 		return this;
 	}
 
-	public Integer getVarLowLimit() {
-		return varLowLimit;
-	}
-
-	public void setVarLowLimit(Integer varLowLimit) {
-		this.varLowLimit = varLowLimit;
-	}
-
-	public Integer getVarHighLimit() {
-		return varHighLimit;
-	}
-
-	public void setVarHighLimit(Integer varHighLimit) {
-		this.varHighLimit = varHighLimit;
-	}
-
+	
 	public Integer getStopLossLimit() {
 		return stopLossLimit;
 	}
@@ -231,15 +218,37 @@ public class Asset extends AbstractEntity implements Serializable {
 		this.feesRate = feesRate;
 	}
 
-	public Asset varLowLimit(Integer varLowLimit) {
+
+	public Double getVarLowLimit() {
+		return varLowLimit;
+	}
+
+
+	public void setVarLowLimit(Double varLowLimit) {
+		this.varLowLimit = varLowLimit;
+	}
+	
+
+	public Asset varLowLimit(Double varLowLimit) {
 		this.varLowLimit = varLowLimit;
 		return this;
 	}
 
-	public Asset varHighLimit(Integer varHighLimit) {
+	public Double getVarHighLimit() {
+		return varHighLimit;
+	}
+
+
+	public void setVarHighLimit(Double varHighLimit) {
+		this.varHighLimit = varHighLimit;
+	}
+	
+	
+	public Asset varHighLimit(Double varHighLimit) {
 		this.varHighLimit = varHighLimit;
 		return this;
 	}
+
 
 	public Asset stopLossLimit(Integer stopLossLimit) {
 		this.stopLossLimit = stopLossLimit;
@@ -319,5 +328,24 @@ public class Asset extends AbstractEntity implements Serializable {
 	public void setGapFromTrend(Double gapFromTrend) {
 		this.gapFromTrend = gapFromTrend;
 	}
+
+
+	public Integer getNbLoss() {
+		return nbLoss;
+	}
+
+	public void setNbLoss(Integer nbLoss) {
+		this.nbLoss = nbLoss;
+	}
+	
+	public Asset nbLoss(Integer nbLoss) {
+		this.nbLoss = nbLoss;
+		return this;
+	}
+	
+	
+	
+	
+	
 
 }

@@ -191,12 +191,12 @@ public class CotationService extends CommonService {
 		
 		if (cotationGrid != null && cotationGrid.size() > 0 && asset != null) {
 			
-			Double lowLimit = asset.getVarLowLimit().doubleValue();
-			Double highLimit = asset.getVarHighLimit().doubleValue();
+			Double lowLimit = asset.getVarLowLimit();
+			Double highLimit = asset.getVarHighLimit();
 			Double maxStopLoss = asset.getStopLossLimit().doubleValue();
 			
 			BigDecimal amountB100 = null;
-			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = 1d;
+			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = 0.5d;
 			Double bestVarHigh = null, bestVarLow = null, bestStopLoss = null;
 
 			while (stopLoss <= maxStopLoss) {
@@ -264,15 +264,15 @@ public class CotationService extends CommonService {
 	
 	
 	public Cotation evaluateTradesForCotations(List<Cotation> cotationGrid, Asset asset, Double maxVarHigh, Double maxVarLow, Double stopLoss, boolean realEval) {
-		
-		double fees = (asset != null && asset.getFeesRate() != null) ? asset.getFeesRate().doubleValue() / 100 : 0.005d;
-		long delayBetweenTrades = (asset.getTradeDelay() != null ? asset.getTradeDelay() : 10) * 60 * 1000; 
-				
+
 		Cotation cotation = null;
 		
-		if (cotationGrid != null) {
+		if (cotationGrid != null && asset != null) {
 			
-			boolean stopTrading = (maxVarHigh == 100d && maxVarLow == 100d);
+			double fees = (asset.getFeesRate() != null) ? asset.getFeesRate().doubleValue() / 100 : 0.005d;
+			long delayBetweenTrades = (asset.getTradeDelay() != null ? asset.getTradeDelay() : 10) * 60 * 1000; 
+			Integer nbLoss = (asset.getNbLoss() != null) ? asset.getNbLoss() : 0;
+			boolean stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && nbLoss > 1 && maxVarLow >= maxVarHigh);
 			
 			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, prevBestBuyPrice = null, buyPrice = null, quantity = null, amountB100 = null;
 			OrderSide currentSide = null;
@@ -349,10 +349,12 @@ public class CotationService extends CommonService {
 							if (realEval) {
 								String message = "Vente ";
 								if (deltaPrice <= -stopLoss) {
-									message += "Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
+									nbLoss++;
+									message += nbLoss + " Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
 								} else if (stopTrading) {
 									message += "Stop Trading " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
 								} else {
+									nbLoss = 0;
 									message += "Take Profit " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN);
 								}
 								getLogger().info(message);
@@ -401,13 +403,17 @@ public class CotationService extends CommonService {
 					}
 					if (bestSellPrice == null || cotation.getPrice() > bestSellPrice) {
 						bestSellPrice = cotation.getPrice();
-					}	
+					}					
+					stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && nbLoss > 1 && maxVarLow >= maxVarHigh);
 
 					cotation.currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice)
 							.prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
 				
 				}
-			}			
+			}
+			if (realEval) {
+				asset.nbLoss(nbLoss);
+			}
 		}		
 		return cotation;
 	}
