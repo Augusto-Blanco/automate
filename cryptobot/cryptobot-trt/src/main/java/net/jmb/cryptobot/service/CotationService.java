@@ -342,14 +342,12 @@ public class CotationService extends CommonService {
 							quantity = 0d;
 							amountB100 = amountB100 * (1 - fees);
 							sellPrice = cotation.getPrice();
-							if (deltaFromBestBuy > maxVarHigh) {
-								bestSellPrice = cotation.getPrice();
-							}
+							bestSellPrice = cotation.getPrice();
 							cotation.flagSell();
 							lastSell = cotation.getDatetime();
 							
 							if (realEval) {
-								String message = "-- Vente ";
+								String message = "Vente ";
 								if (deltaPrice <= -stopLoss) {
 									message += "Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN);
 								} else if (stopTrading) {
@@ -363,7 +361,7 @@ public class CotationService extends CommonService {
 							}
 						}
 	
-					} else if (currentSide.equals(OrderSide.SELL)) {
+					} else if (currentSide.equals(OrderSide.SELL) && !stopTrading) {
 						Double deltaFromBestSell = (cotation.getPrice() - bestSellPrice) / bestSellPrice * 100;
 						boolean isDelayOK = (lastSell == null || cotation.getDatetime().getTime() - lastSell.getTime() > delayBetweenTrades);
 							
@@ -374,7 +372,7 @@ public class CotationService extends CommonService {
 							boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().compareTo(BigDecimal.ZERO) > 0 );
 							boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().compareTo(BigDecimal.ZERO) > 0 );
 							
-							if (!isStopLoss && isTrendOK || isStopLoss && positiveVar15m && positiveVar30m || !isStopLoss && positiveVar15m) {
+							if (!isStopLoss && isTrendOK || positiveVar15m && positiveVar30m) {
 								
 								currentSide = OrderSide.BUY;
 								buyPrice = cotation.getPrice();

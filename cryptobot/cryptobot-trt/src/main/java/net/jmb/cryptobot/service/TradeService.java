@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
+import net.jmb.cryptobot.CryptoBatchApp;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Trade;
@@ -40,7 +41,10 @@ public abstract class TradeService extends CommonService implements CommandLineR
 		
 		if (symbol != null) {
 			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
-			registerLastCotations();
+			String noExchange = CryptoBatchApp.getParameters(args).get("noExchange");
+			if (noExchange == null) {
+				registerLastCotations();
+			}
 			evaluateLastCotations();
 		}
 	}
