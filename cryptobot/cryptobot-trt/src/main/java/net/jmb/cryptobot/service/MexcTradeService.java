@@ -26,54 +26,63 @@ public class MexcTradeService extends TradeService {
 
 	
 	@Override
-	public synchronized List<Cotation> registerLastCotations() throws Exception {		
-		List<Cotation> newCotations = restClientService.updateCotationsPrice(symbol);
-		return newCotations;
-		
+	public synchronized List<Cotation> registerLastCotations() throws Exception {
+		if (canExchange()) {
+			List<Cotation> newCotations = restClientService.updateCotationsPrice(symbol);
+			return newCotations;
+		}
+		return null;
 	}
+	
+	
 	
 	
 	@Scheduled(cron = "${cryptobot.trade.evaluation.scheduler.cron}")
 	@Transactional
 	public synchronized void evaluateTradeForLastCotation() throws Exception {
 		
-		asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
-		
-		if (asset != null) {
+		if (canExchange()) {
 			
-			Trade trade = null;
+			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
 			
-			List<Cotation> lastCotations = registerLastCotations();			
-			if (lastCotations != null && lastCotations.size() > 0) {
+			if (asset != null) {
 				
-				lastCotations = cotationService.getCryptobotRepository().getAllCotationsSinceLastRated(symbol);
+				Trade trade = null;
 				
+				List<Cotation> lastCotations = registerLastCotations();			
 				if (lastCotations != null && lastCotations.size() > 0) {
-					Cotation cotation = lastCotations.get(lastCotations.size() - 1);
-					AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);
-	
-					cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.realEval(true));
 					
-					if (cotation != null && "B".equalsIgnoreCase(cotation.getFlagBuy())) {
-						Double freeAmount = restClientService.getFreeQuantity("USDT");
-						Double maxInvest = asset.getMaxInvest();
-						if (maxInvest != null && maxInvest > 0d && maxInvest < freeAmount) {
-							freeAmount = maxInvest;
+					lastCotations = cotationService.getCryptobotRepository().getAllCotationsSinceLastRated(symbol);
+					
+					if (lastCotations != null && lastCotations.size() > 0) {
+						Cotation cotation = lastCotations.get(lastCotations.size() - 1);
+						AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);
+		
+						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.realEval(true));
+						
+	
+							if (cotation != null && "B".equalsIgnoreCase(cotation.getFlagBuy())) {
+								Double freeAmount = restClientService.getFreeQuantity("USDT");
+								Double maxInvest = asset.getMaxInvest();
+								if (maxInvest != null && maxInvest > 0d && maxInvest < freeAmount) {
+									freeAmount = maxInvest;
+								}
+								Double lastPrice = restClientService.getLastPrice(symbol);
+								if (freeAmount > 0d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
+									Double quantity = freeAmount / lastPrice; 
+									trade = sendOrder(OrderSide.BUY, quantity, lastPrice);			
+								}
+							} else if (cotation != null && "S".equalsIgnoreCase(cotation.getFlagSell())) {
+								Double quantity = restClientService.getFreeQuantity(symbol);
+								Double lastPrice = restClientService.getLastPrice(symbol);
+								if (lastPrice > 0d && quantity > 0d) {
+									trade = sendOrder(OrderSide.SELL, quantity, lastPrice);			
+								}
+							}
+						
+						if (trade != null) {
+							super.registerTradeForCotation(trade, cotation);
 						}
-						Double lastPrice = restClientService.getLastPrice(symbol);
-						if (freeAmount > 0d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
-							Double quantity = freeAmount / lastPrice; 
-							trade = sendOrder(OrderSide.BUY, quantity, lastPrice);			
-						}
-					} else if (cotation != null && "S".equalsIgnoreCase(cotation.getFlagSell())) {
-						Double quantity = restClientService.getFreeQuantity(symbol);
-						Double lastPrice = restClientService.getLastPrice(symbol);
-						if (lastPrice > 0d && quantity > 0d) {
-							trade = sendOrder(OrderSide.SELL, quantity, lastPrice);			
-						}
-					}
-					if (trade != null) {
-						super.registerTradeForCotation(trade, cotation);
 					}
 				}
 			}
@@ -84,7 +93,7 @@ public class MexcTradeService extends TradeService {
 	
 	public synchronized Trade sendOrder(OrderSide orderSide, Double quantity, Double price) {
 		
-		if (asset != null) {
+		if (asset != null && canExchange()) {
 			
 			Double fees = asset.getFeesRate().doubleValue() / 100;
 			

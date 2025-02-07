@@ -62,6 +62,8 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	private Double bestSellPrice;
 	private Double quantity;
 	private BigDecimal amountB100;
+	private Integer nbLoss;
+	private Boolean canResetBestPrice;
 	
 	//bi-directional one-to-one association to Trade
 	@OneToOne()
@@ -466,6 +468,7 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 
 		@Override
 		public int compareTo(Cotation o) {
+			
 			if (datetime == null && o.getDatetime() != null) {
 				return -1;
 			}
@@ -587,10 +590,10 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 
 		@Override
 		public String toString() {
-			String date = (datetime != null) ? new SimpleDateFormat("dd/MM HH:mm").format(datetime) : null;
-			return "Cotation [" + symbol + " " + date + ": price=" + price + ", side=" + currentSide + ", buyPrice=" + buyPrice 
-					+ ", bestBuyPrice=" + bestBuyPrice + ", prevBestBuy=" + prevBestBuyPrice + ", sellPrice=" + sellPrice 
-					+ ", bestSellPrice=" + bestSellPrice + ", quantity=" + quantity + ", amountB100=" + amountB100 + "]";
+			String date = (datetime != null) ? new SimpleDateFormat("dd-MM HH:mm").format(datetime) : null;
+			return "[" + symbol + " " + date + ", price=" + price + ", amount=" + amountB100 + ", side=" + currentSide + ", nbLoss=" + nbLoss 
+					+ ", bestBuy=" + bestBuyPrice + ", prevBestBuy=" + prevBestBuyPrice + ", bestSell=" + bestSellPrice 
+					+ ", canReset=" + canResetBestPrice + ", buyPrice=" + buyPrice + ", sellPrice=" + sellPrice + "]";
 		}
 
 
@@ -647,6 +650,30 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 			}
 			return this;
 		}
+		
+		public Integer getNbLoss() {
+			return nbLoss;
+		}
+
+		public void setNbLoss(Integer nbLoss) {
+			this.nbLoss = nbLoss;
+		}
+		
+		public Cotation nbLoss(Integer nbLoss) {
+			this.nbLoss = nbLoss;
+			return this;
+		}
+		
+		public Boolean canResetBestPrice() {
+			return canResetBestPrice;
+		}
+
+		public Cotation canResetBestPrice(Boolean canResetBestPrice) {
+			this.canResetBestPrice = canResetBestPrice;
+			return this;
+		}
+
+		
 
 
 }

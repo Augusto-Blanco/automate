@@ -5,7 +5,8 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://ch.qos.logback/xml/ns/logback logback.xsd">
 
-	<property name="pattern" value="%d{HH:mm:ss} [%thread] %-5level %logger -- %msg%n" />		
+	<property name="pattern" value="%d{HH:mm:ss} [%thread] %-5level %logger -- %msg%n" />
+	<property name="patternCotation" value="%d{HH:mm:ss} -- %msg%n" />
 	<property name="sql.level" value="warn" />
 	<property name="root.level" value="warn" />
 	<property name="cryptobot.level" value="info" />
@@ -66,6 +67,17 @@
 				<pattern>${pattern}</pattern>
 			</encoder>
 		</appender>
+		
+		<appender name="COTATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+			<file>${log.dir}/cotation.log</file>
+			<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+				<fileNamePattern>${log.dir}/cotation_%d{yyyy-MM-dd}.log</fileNamePattern>
+				<maxHistory>7</maxHistory>
+			</rollingPolicy>
+			<encoder>
+				<pattern>${patternCotation}</pattern>
+			</encoder>
+		</appender>
 
 	
 		<root level="${root.level}">
@@ -80,6 +92,10 @@
 		</logger>
 		<logger name="org.hibernate.orm.jdbc.bind" level="${sql.level}" additivity="false">
 			<appender-ref ref="HIBERNATE_FILE" />
+		</logger>
+		
+		<logger name="net.jmb.cryptobot.service.CotationService" level="${cryptobot.level}">
+			<appender-ref ref="COTATION_FILE" />
 		</logger>
 	
 		<logger name="net.jmb.cryptobot.service" level="${cryptobot.level}">

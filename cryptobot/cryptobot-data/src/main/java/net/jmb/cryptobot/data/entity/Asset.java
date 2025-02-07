@@ -48,7 +48,7 @@ public class Asset extends AbstractEntity implements Serializable {
 	private String frequency;	
 	private BigDecimal perf;
 	private Double gapFromTrend;
-	private Integer nbLoss;
+
 	
 	
 	@OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -330,21 +330,12 @@ public class Asset extends AbstractEntity implements Serializable {
 	}
 
 
-	public Integer getNbLoss() {
-		return nbLoss;
+	@Override
+	public String toString() {
+		return "Asset [symbol=" + symbol + ", varLowLimit=" + varLowLimit + ", varHighLimit=" + varHighLimit
+				+ ", stopLossLimit=" + stopLossLimit + ", analysisPeriod=" + analysisPeriod + ", frequency=" + frequency
+				+ ", gapFromTrend=" + gapFromTrend + "]";
 	}
-
-	public void setNbLoss(Integer nbLoss) {
-		this.nbLoss = nbLoss;
-	}
-	
-	public Asset nbLoss(Integer nbLoss) {
-		this.nbLoss = nbLoss;
-		return this;
-	}
-	
-	
-	
 	
 	
 

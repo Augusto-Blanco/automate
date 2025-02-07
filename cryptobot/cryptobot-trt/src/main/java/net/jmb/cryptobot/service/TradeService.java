@@ -11,7 +11,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
-import net.jmb.cryptobot.CryptoBatchApp;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Trade;
@@ -33,6 +32,9 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	@Value("${initDate:}")
 	String initDate = null;
 	
+	@Value("${noExchange:false}")
+	Boolean noExchange = false;
+	
 	Asset asset = null;
 
 	
@@ -42,14 +44,17 @@ public abstract class TradeService extends CommonService implements CommandLineR
 		
 		if (symbol != null) {
 			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
-			String noExchange = CryptoBatchApp.getParameters(args).get("noExchange");
-			if (noExchange == null) {
+
+			if (canExchange() || StringUtils.isBlank(initDate)) {
 				registerLastCotations();
 			}
 			evaluateLastCotations();
 		}
 	}
 	
+	public boolean canExchange() {
+		return (this.noExchange == null || this.noExchange == false);
+	}
 	
 
 	public abstract List<Cotation> registerLastCotations() throws Exception;
@@ -63,12 +68,13 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")	
 	public synchronized Cotation evaluateLastCotations() throws Exception {
 		
-		asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);		
-		if (asset != null) {
-			Cotation lastCotation = cotationService.evaluateLastCotations(asset, StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null);
-			return lastCotation;
+		if (canExchange()) {
+			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);		
+			if (asset != null) {
+				Cotation lastCotation = cotationService.evaluateLastCotations(asset, StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null);
+				return lastCotation;
+			}
 		}
-		
 		return null;
 	}
 	

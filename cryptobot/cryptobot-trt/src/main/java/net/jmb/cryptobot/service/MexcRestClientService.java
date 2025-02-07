@@ -200,8 +200,8 @@ public class MexcRestClientService extends CommonService {
 			queryParams = new LinkedMultiValueMap<String, String>();
 		}
 		
-		queryParams.add("timestamp", "" + (new Date().getTime() - 1000));
-		queryParams.add("recvWindow", "15000");
+		queryParams.add("timestamp", "" + (new Date().getTime() - 2000));
+		queryParams.add("recvWindow", "20000");
 		
 		String queryString = UriComponentsBuilder.newInstance()
 			.queryParams(queryParams)

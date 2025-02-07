@@ -36,7 +36,7 @@ public class CryptobotRepository extends GenericRepository {
 	public List<Cotation> getCotationsSinceDate(String symbol, Date startDate) {		
 		List<Cotation> cotations = null;		
 		if (startDate != null) {				
-			cotations = cotationRepository.findBySymbolEqualsAndDatetimeGreaterThanEqual(symbol, startDate);
+			cotations = cotationRepository.findBySymbolEqualsAndDatetimeGreaterThanEqualOrderByDatetime(symbol, startDate);
 		}		
 		return cotations;		
 	}
