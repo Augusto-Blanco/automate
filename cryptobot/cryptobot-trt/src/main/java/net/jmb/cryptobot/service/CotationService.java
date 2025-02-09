@@ -36,19 +36,28 @@ public class CotationService extends CommonService {
 	
 	
 	@Transactional
-	public Cotation evaluateLastCotations(Asset asset, Date initDate) {
+	public Cotation evaluateLastCotations(Asset asset, Date initDate, Boolean reset) {
 		
+		if (reset == null) {
+			reset = false;
+		}		
 		if (initDate != null) {			
 			return initEvaluationForCotations(asset, initDate, true);			
 		} else {			
 			Cotation refCotation = cryptobotRepository.getLastRatedCotation(asset.getSymbol());
-			if (refCotation != null) {		
-				return initEvaluationForCotations(asset, refCotation.getDatetime(), false);				
-			} else {
-				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), Period._6j));
-				if (refCotation != null) {
-					return initEvaluationForCotations(asset, refCotation.getDatetime(), true);
+			if (refCotation != null) {
+				if (!reset) {
+					return initEvaluationForCotations(asset, refCotation.getDatetime(), false);				
+				} else {
+					Date startDate = PeriodUtil.previousDateForPeriod(new Date(), Period.get(asset.getAnalysisPeriod()));
+					startDate = PeriodUtil.previousDateForPeriod(startDate, Period._24h);
+					refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), startDate);
 				}
+			} else {
+				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), Period._6j));				
+			}
+			if (refCotation != null) {
+				return initEvaluationForCotations(asset, refCotation.getDatetime(), true);
 			}
 		}
 		return null;
@@ -204,10 +213,12 @@ public class CotationService extends CommonService {
 			
 			Double lowLimit = asset.getVarLowLimit();
 			Double highLimit = asset.getVarHighLimit();
+			Double minStopLoss = asset.getStopLossStart() != null ? asset.getStopLossStart() : 0.5d;
 			Double maxStopLoss = asset.getStopLossLimit().doubleValue();
 			
+			
 			BigDecimal amountB100 = null;
-			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = 0.5d;
+			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = minStopLoss;
 			Double bestVarHigh = null, bestVarLow = null, bestStopLoss = null;
 
 			while (stopLoss <= maxStopLoss) {
@@ -375,10 +386,10 @@ public class CotationService extends CommonService {
 							}
 							
 							if (realEval) {
-								String message = "Vente ";
+								String message = "Vente " + cotation.getSymbol();
 								if (deltaPrice <= -stopLoss) {
 									nbLoss++;
-									message += nbLoss + " Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
+									message += nbLoss + ": Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else if (stopTrading) {
 									message += "Stop Trading " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else {
@@ -399,8 +410,11 @@ public class CotationService extends CommonService {
 						if (deltaFromBestSell <= -maxVarLow && isDelayOK && !stopTrading) {	
 
 							boolean isTrendOK = isTrendOK(cotation, asset, realEval);
-							boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().compareTo(BigDecimal.ZERO) > 0 );
-							boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().compareTo(BigDecimal.ZERO) > 0 );
+							boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
+							boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0.5d);
+							if (nbLoss > 1) {
+								positiveVar30m &= (maxVarHigh > maxVarLow);
+							}
 							
 							if (nbLoss == 0 && isTrendOK || positiveVar15m && positiveVar30m) {
 								
@@ -416,7 +430,7 @@ public class CotationService extends CommonService {
 								canResetBestPrice = true;
 								
 								if (realEval) {
-									String message = "Achat : delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN) + "%";
+									String message = "Achat " + cotation.getSymbol() + ": delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN) + "%";
 									getLogger().info(message);
 									message	= "-- Stop loss: " + (nbLoss > 0) + " -- Trend OK: " + isTrendOK + " -- Var 15min: " + cotation.getVar15m() 
 											+ " -- Var 30min: " + cotation.getVar30m();

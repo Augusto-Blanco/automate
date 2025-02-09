@@ -1,6 +1,7 @@
 package net.jmb.cryptobot.service;
 
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -71,7 +72,9 @@ public abstract class TradeService extends CommonService implements CommandLineR
 		if (canExchange()) {
 			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);		
 			if (asset != null) {
-				Cotation lastCotation = cotationService.evaluateLastCotations(asset, StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null);
+				
+				Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
+				Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef, true);
 				return lastCotation;
 			}
 		}

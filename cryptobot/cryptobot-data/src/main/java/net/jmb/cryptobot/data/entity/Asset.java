@@ -42,6 +42,7 @@ public class Asset extends AbstractEntity implements Serializable {
 	private Integer tradeDelay;
 	private Double varLowLimit;
 	private Double varHighLimit;
+	private Double stopLossStart;
 	private Integer stopLossLimit;
 	private BigDecimal feesRate;
 	private String analysisPeriod;
@@ -233,6 +234,8 @@ public class Asset extends AbstractEntity implements Serializable {
 		this.varLowLimit = varLowLimit;
 		return this;
 	}
+	
+
 
 	public Double getVarHighLimit() {
 		return varHighLimit;
@@ -336,7 +339,22 @@ public class Asset extends AbstractEntity implements Serializable {
 				+ ", stopLossLimit=" + stopLossLimit + ", analysisPeriod=" + analysisPeriod + ", frequency=" + frequency
 				+ ", gapFromTrend=" + gapFromTrend + "]";
 	}
+
+
+	public Double getStopLossStart() {
+		return stopLossStart;
+	}
+
+
+	public void setStopLossStart(Double stopLossStart) {
+		this.stopLossStart = stopLossStart;
+	}
 	
+	
+	public Asset stopLossStart(Double stopLossStart) {
+		this.stopLossStart = stopLossStart;
+		return this;
+	}
 	
 
 }
