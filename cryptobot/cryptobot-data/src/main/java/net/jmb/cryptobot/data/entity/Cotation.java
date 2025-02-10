@@ -63,6 +63,7 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	private Double quantity;
 	private BigDecimal amountB100;
 	private Integer nbLoss;
+	private Double percentLoss;
 	private Boolean canResetBestPrice;
 	
 	//bi-directional one-to-one association to Trade
@@ -462,7 +463,9 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 				.bestSellPrice(null)
 				.currentSide((String)null)
 				.flagBuy(null)
-				.flagSell(null);
+				.flagSell(null)
+				.nbLoss(0)
+				.percentLoss(0d);
 		}
 
 
@@ -672,6 +675,24 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 			this.canResetBestPrice = canResetBestPrice;
 			return this;
 		}
+
+
+		public Double getPercentLoss() {
+			return percentLoss;
+		}
+
+
+		public void setPercentLoss(Double percentLoss) {
+			this.percentLoss = percentLoss;
+		}
+		
+		public Cotation percentLoss(Double percentLoss) {
+			this.percentLoss = percentLoss;
+			return this;
+		}
+
+
+
 
 		
 

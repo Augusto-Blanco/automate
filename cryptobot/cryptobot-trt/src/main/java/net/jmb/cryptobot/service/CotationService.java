@@ -2,7 +2,6 @@ package net.jmb.cryptobot.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,12 +61,6 @@ public class CotationService extends CommonService {
 		
 		if (asset != null && asset.getSymbol() != null) {
 
-			getLogger().info("--------------------");
-			getLogger().info("Evaluation des cotations depuis le : " + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(dateRef));
-			getLogger().info("Mode réinitialisation : " + reset);
-			getLogger().info("Pour " + asset);
-		
-			
 			String symbol = asset.getSymbol();
 			Period analysisPeriod = asset.getAnalysisPeriodEnum();
 			if (analysisPeriod == null) {
@@ -156,10 +149,6 @@ public class CotationService extends CommonService {
 					recordEvaluationsForCotations(dbCotations.subList(refIndex, dbCotations.size()), asset, assetConfigList);
 				}
 			}
-			
-			getLogger().info("Evaluation terminée");
-			getLogger().info("");
-
 			
 		}
 		return cotation;
@@ -272,6 +261,9 @@ public class CotationService extends CommonService {
 			Double maxVarHigh = assetConfig.getMaxVarHigh() != null ? assetConfig.getMaxVarHigh().doubleValue() : 1000d;
 			Double maxVarLow = assetConfig.getMaxVarLow() != null ? assetConfig.getMaxVarLow().doubleValue() : 1000d;
 			Double stopLoss = assetConfig.getStopLoss() != null ? assetConfig.getStopLoss().doubleValue() : 1000d;
+			if (asset.getMaxPercentLoss() != null && asset.getMaxPercentLoss() < stopLoss) {
+				stopLoss = asset.getMaxPercentLoss();
+			}
 			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss, assetConfig.isRealEval());
 
 			getLogger().info(assetConfig.toString());
@@ -294,10 +286,12 @@ public class CotationService extends CommonService {
 			
 			double fees = (asset.getFeesRate() != null) ? asset.getFeesRate().doubleValue() / 100 : 0.005d;
 			long delayBetweenTrades = (asset.getTradeDelay() != null ? asset.getTradeDelay() : 10) * 60 * 1000; 
+			Double maxPercentLoss = (asset.getMaxPercentLoss() != null ? asset.getMaxPercentLoss() : 5);
 			
 			Integer nbLoss = null;
 			Boolean stopTrading = null, canResetBestPrice = null;			
-			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, prevBestBuyPrice = null, buyPrice = null, quantity = null, amountB100 = null;
+			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, prevBestBuyPrice = null, buyPrice = null, 
+					quantity = null, amountB100 = null, percentLoss = null;
 			OrderSide currentSide = null;
 			Date lastBuy = null, lastSell = null;			
 			
@@ -313,13 +307,16 @@ public class CotationService extends CommonService {
 					Double price = cotation.getPrice();
 					amountB100 = 100d;
 					quantity = amountB100 / price;
-					cotation.flagBuy().nbLoss(0).canResetBestPrice(false).currentSide(OrderSide.BUY).buyPrice(price).bestBuyPrice(price)
+					cotation.flagBuy().nbLoss(0).percentLoss(0d).canResetBestPrice(false).currentSide(OrderSide.BUY).buyPrice(price).bestBuyPrice(price)
 							.sellPrice(null).bestSellPrice(null).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100));
 					lastBuy = cotation.getDatetime();
 				}
 				
 				if (nbLoss == null) {
 					nbLoss = cotation.getNbLoss() != null ? cotation.getNbLoss() : 0;
+				}
+				if (percentLoss == null) {
+					percentLoss = cotation.getPercentLoss() != null ? cotation.getPercentLoss() : 0d;
 				}
 				if (canResetBestPrice == null) {
 					canResetBestPrice = cotation.canResetBestPrice();
@@ -355,14 +352,15 @@ public class CotationService extends CommonService {
 					}
 				}
 				
-				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && nbLoss > 1 && maxVarLow >= maxVarHigh);
+				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && percentLoss <= -maxPercentLoss && maxVarHigh <= maxVarLow);
 				
 				// évaluation achat-vente uniquement si la cotation n'est pas celle de référence
 				// la cotation initiale est la référence de calcul pour les autres : elle ne doit pas être mise à jour
 				if (i > 0) {
 					
-					cotation.nbLoss(nbLoss).canResetBestPrice(canResetBestPrice).currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice)
-							.bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+					cotation.nbLoss(nbLoss).percentLoss(percentLoss).canResetBestPrice(canResetBestPrice).currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice)
+							.bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).quantity(quantity)
+							.amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
 					
 					Double deltaFromBestBuy = (cotation.getPrice() - bestBuyPrice) / bestBuyPrice * 100;
 					
@@ -387,14 +385,16 @@ public class CotationService extends CommonService {
 							}
 							
 							if (realEval) {
-								String message = "Vente " + cotation.getSymbol();
+								String message = "Vente " + cotation.getSymbol() + ": ";
 								if (deltaPrice <= -stopLoss) {
 									nbLoss++;
-									message += nbLoss + ": Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
+									percentLoss += deltaPrice;
+									message += nbLoss + "Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else if (stopTrading) {
 									message += "Stop Trading " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else {
 									nbLoss = 0;
+									percentLoss = 0d;
 									message += "Take Profit " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								}
 								getLogger().info(message);
@@ -410,14 +410,19 @@ public class CotationService extends CommonService {
 							
 						if (deltaFromBestSell <= -maxVarLow && isDelayOK && !stopTrading) {	
 
+							// on tente de sécuriser l'achat au maximum en fonction de la tendance et des pertes déjà subies
 							boolean isTrendOK = isTrendOK(cotation, asset, realEval);
 							boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
-							boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0.5d);
+							boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
+							boolean positiveVar = positiveVar15m;
+							if (nbLoss > 0) {
+								positiveVar &= positiveVar30m;
+							}
 							if (nbLoss > 1) {
-								positiveVar30m &= (maxVarHigh > maxVarLow);
+								positiveVar &= (maxVarHigh > maxVarLow);
 							}
 							
-							if (nbLoss == 0 && isTrendOK || positiveVar15m && positiveVar30m) {
+							if (nbLoss == 0 && isTrendOK || (nbLoss == 0 || isTrendOK) && positiveVar) {
 								
 								currentSide = OrderSide.BUY;
 								buyPrice = cotation.getPrice();
@@ -453,8 +458,9 @@ public class CotationService extends CommonService {
 						canResetBestPrice = false;
 					}
 
-					cotation.nbLoss(nbLoss).canResetBestPrice(canResetBestPrice).currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice)
-							.bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+					cotation.nbLoss(nbLoss).percentLoss(percentLoss).canResetBestPrice(canResetBestPrice).currentSide(currentSide).sellPrice(sellPrice).buyPrice(buyPrice)
+							.bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).quantity(quantity)
+							.amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));			
 				
 				}
 			}
@@ -473,18 +479,30 @@ public class CotationService extends CommonService {
 				if (prevBestBuyPrice != null && cotation.getBestBuyPrice() != null) {
 					Double actualBestBuyPrice = cotation.getBestBuyPrice();
 					Double trend = (actualBestBuyPrice - prevBestBuyPrice) / prevBestBuyPrice;
-					Double theoricBuyPrice;
+					Double estimatedBuyPrice;
 					if (trend > 0) {
-						theoricBuyPrice = actualBestBuyPrice * trend;
+						estimatedBuyPrice = actualBestBuyPrice * trend;
 					} else {
-						theoricBuyPrice = actualBestBuyPrice;
+						estimatedBuyPrice = actualBestBuyPrice;
 					}
 					Double price = cotation.getPrice();
-					Double gapBetweenPrices = (price - theoricBuyPrice) / theoricBuyPrice * 100;
+					Double gapBetweenPrices = (price - estimatedBuyPrice) / estimatedBuyPrice * 100;
 					if (gapBetweenPrices > gapFromTrend) {
 						trendOK = false;
+						if (realEval) {
+							String message = "-- Trend KO pour " + cotation.getSymbol() + " à " + cotation.getDatetime();
+							getLogger().info(message);
+							message	= " -- trend: " + trend * 100 + "%" + " -- estimated buy price: " + estimatedBuyPrice  
+									+ " -- actual price: " + price + " -- gap: " + gapBetweenPrices;
+							getLogger().info(message);
+							getLogger().info("");
+						}						
 					} else if (realEval) {
-
+						String message = "-- Trend OK pour " + cotation.getSymbol() + " à " + cotation.getDatetime();
+						getLogger().info(message);
+						message	= " -- estimated buy price: " + estimatedBuyPrice + " -- actual price: " + price;
+						getLogger().info(message);
+						getLogger().info("");
 					}
 				}				
 			}

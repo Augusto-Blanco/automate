@@ -44,6 +44,7 @@ public class Asset extends AbstractEntity implements Serializable {
 	private Double varHighLimit;
 	private Double stopLossStart;
 	private Integer stopLossLimit;
+	private Double maxPercentLoss;
 	private BigDecimal feesRate;
 	private String analysisPeriod;
 	private String frequency;	
@@ -353,6 +354,21 @@ public class Asset extends AbstractEntity implements Serializable {
 	
 	public Asset stopLossStart(Double stopLossStart) {
 		this.stopLossStart = stopLossStart;
+		return this;
+	}
+
+
+	public Double getMaxPercentLoss() {
+		return maxPercentLoss;
+	}
+
+
+	public void setMaxPercentLoss(Double maxPercentLoss) {
+		this.maxPercentLoss = maxPercentLoss;
+	}
+	
+	public Asset maxPercentLoss(Double maxPercentLoss) {
+		this.maxPercentLoss = maxPercentLoss;
 		return this;
 	}
 	
