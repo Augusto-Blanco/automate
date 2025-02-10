@@ -53,6 +53,16 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 		+   "where a.symbol = :symbol and a.price = a.min24h "
 		+   "and a.datetime >= :startDate "
 		+	"order by datetime";
+	
+	public static final String MIN_PRICE_COTATION_QUERY = 		
+			"select a from Cotation a "
+		+   "where a.symbol = :symbol and a.datetime >= :startDate "
+		+	"and a.datetime <= :endDate and a.price = ( "
+		+   "	select min(b.price) from Cotation b "
+		+ 	"	where b.symbol = :symbol and b.datetime >= :startDate "
+		+	"	and b.datetime <= :endDate "
+		+	")"
+		+	"order by datetime";
 		
 	
 	@Query(LAST_RATED_COTATION_QUERY)
@@ -66,7 +76,12 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 	
 	@Query(MIN_PRICE_24H_COTATION_QUERY)
 	List<Cotation> findMinPrice24hCotationForSymbolAfterDate(String symbol, Date startDate);
+
 	
+	@Query(MIN_PRICE_COTATION_QUERY)
+	List<Cotation> findMinPriceCotationForSymbolBetweenDates(String symbol, Date startDate, Date endDate);
+
+
 	
 	List<Cotation> findBySymbolEqualsAndDatetimeGreaterThanEqualOrderByDatetime(String symbol, Date datetime);
 	

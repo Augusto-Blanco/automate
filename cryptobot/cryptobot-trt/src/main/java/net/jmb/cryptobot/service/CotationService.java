@@ -36,28 +36,19 @@ public class CotationService extends CommonService {
 	
 	
 	@Transactional
-	public Cotation evaluateLastCotations(Asset asset, Date initDate, Boolean reset) {
+	public Cotation evaluateLastCotations(Asset asset, Date initDate) {
 		
-		if (reset == null) {
-			reset = false;
-		}		
 		if (initDate != null) {			
 			return initEvaluationForCotations(asset, initDate, true);			
-		} else {			
+		} else {	
 			Cotation refCotation = cryptobotRepository.getLastRatedCotation(asset.getSymbol());
 			if (refCotation != null) {
-				if (!reset) {
-					return initEvaluationForCotations(asset, refCotation.getDatetime(), false);				
-				} else {
-					Date startDate = PeriodUtil.previousDateForPeriod(new Date(), Period.get(asset.getAnalysisPeriod()));
-					startDate = PeriodUtil.previousDateForPeriod(startDate, Period._24h);
-					refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), startDate);
-				}
+				return initEvaluationForCotations(asset, refCotation.getDatetime(), false);	
 			} else {
-				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), Period._6j));				
-			}
-			if (refCotation != null) {
-				return initEvaluationForCotations(asset, refCotation.getDatetime(), true);
+				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), Period._6j));
+				if (refCotation != null) {
+					return initEvaluationForCotations(asset, refCotation.getDatetime(), true);
+				}
 			}
 		}
 		return null;
@@ -70,11 +61,12 @@ public class CotationService extends CommonService {
 		Cotation cotation = null;
 		
 		if (asset != null && asset.getSymbol() != null) {
-			
+
 			getLogger().info("--------------------");
 			getLogger().info("Evaluation des cotations depuis le : " + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(dateRef));
 			getLogger().info("Mode réinitialisation : " + reset);
 			getLogger().info("Pour " + asset);
+		
 			
 			String symbol = asset.getSymbol();
 			Period analysisPeriod = asset.getAnalysisPeriodEnum();
@@ -98,6 +90,14 @@ public class CotationService extends CommonService {
 				// pour initialiser l'achat on prend 2 fois la période d'analyse afin de déterminer le moment optimum d'achat AVANT le début de l'analyse
 				if (reset) {
 					startDate = PeriodUtil.previousDateForPeriod(startDate, analysisPeriod);
+				} else {
+					Date prevDate = PeriodUtil.previousDateForPeriod(startDate, Period._6h);
+					if (prevDate != null) {
+						Cotation minCotation = cryptobotRepository.getMinCotationBetweenDates(asset.getSymbol(), prevDate, startDate);
+						if (minCotation != null) {
+							startDate = minCotation.getDatetime();
+						}
+					}
 				}
 				
 				List<Cotation> dbCotations = cryptobotRepository.getCotationsSinceDate(symbol, startDate);
@@ -109,6 +109,7 @@ public class CotationService extends CommonService {
 					List<AssetConfig> assetConfigList = new ArrayList<AssetConfig>();
 
 					cotation = cotations.get(0);
+					cotation.resetEvaluation();
 					int startIndex = 0;
 					
 					List<Cotation> cotationGrid = null;
@@ -313,7 +314,7 @@ public class CotationService extends CommonService {
 					amountB100 = 100d;
 					quantity = amountB100 / price;
 					cotation.flagBuy().nbLoss(0).canResetBestPrice(false).currentSide(OrderSide.BUY).buyPrice(price).bestBuyPrice(price)
-							.prevBestBuyPrice(price).sellPrice(null).bestSellPrice(null).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100));
+							.sellPrice(null).bestSellPrice(null).quantity(quantity).amountB100(BigDecimal.valueOf(amountB100));
 					lastBuy = cotation.getDatetime();
 				}
 				

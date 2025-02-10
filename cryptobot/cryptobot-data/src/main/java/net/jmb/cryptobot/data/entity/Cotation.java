@@ -457,8 +457,8 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 				.quantity(null)
 				.sellPrice(null)
 				.buyPrice(null)
+				.prevBestBuyPrice(bestBuyPrice)
 				.bestBuyPrice(null)
-				
 				.bestSellPrice(null)
 				.currentSide((String)null)
 				.flagBuy(null)

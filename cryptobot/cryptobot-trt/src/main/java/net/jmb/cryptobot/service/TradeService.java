@@ -74,7 +74,7 @@ public abstract class TradeService extends CommonService implements CommandLineR
 			if (asset != null) {
 				
 				Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
-				Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef, true);
+				Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
 				return lastCotation;
 			}
 		}

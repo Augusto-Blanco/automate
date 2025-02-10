@@ -120,6 +120,20 @@ public class CryptobotRepository extends GenericRepository {
 		}
 		return cotation;
 	}
+	
+	
+	public Cotation getMinCotationBetweenDates(String symbol, Date startDate, Date endDate) {
+		Cotation cotation = null;		
+		if (symbol != null && startDate != null && endDate != null) {
+			List<Cotation> cotations = cotationRepository.findMinPriceCotationForSymbolBetweenDates(symbol, startDate, endDate);			
+			if (cotations != null && cotations.size() > 0) {
+				for (Cotation tmp : cotations) {
+					cotation = tmp;
+				}
+			}
+		}
+		return cotation;
+	}
 		
 	
 	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
