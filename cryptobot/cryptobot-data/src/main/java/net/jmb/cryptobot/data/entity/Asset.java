@@ -337,7 +337,7 @@ public class Asset extends AbstractEntity implements Serializable {
 	@Override
 	public String toString() {
 		return "Asset [symbol=" + symbol + ", varLowLimit=" + varLowLimit + ", varHighLimit=" + varHighLimit
-				+ ", stopLossLimit=" + stopLossLimit + ", analysisPeriod=" + analysisPeriod + ", frequency=" + frequency
+				+ ", stopLossLimit=" + stopLossLimit + ", maxPercentLoss=" + maxPercentLoss + ", analysisPeriod=" + analysisPeriod
 				+ ", gapFromTrend=" + gapFromTrend + "]";
 	}
 

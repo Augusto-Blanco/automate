@@ -261,12 +261,17 @@ public class CotationService extends CommonService {
 			Double maxVarHigh = assetConfig.getMaxVarHigh() != null ? assetConfig.getMaxVarHigh().doubleValue() : 1000d;
 			Double maxVarLow = assetConfig.getMaxVarLow() != null ? assetConfig.getMaxVarLow().doubleValue() : 1000d;
 			Double stopLoss = assetConfig.getStopLoss() != null ? assetConfig.getStopLoss().doubleValue() : 1000d;
-			if (asset.getMaxPercentLoss() != null && asset.getMaxPercentLoss() < stopLoss) {
-				stopLoss = asset.getMaxPercentLoss();
+			if (asset.getMaxPercentLoss() != null) {
+				if (asset.getMaxPercentLoss() < stopLoss || stopLoss == 0d) {
+					stopLoss = asset.getMaxPercentLoss();
+				}				
 			}
-			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss, assetConfig.isRealEval());
-
+			
+			getLogger().info(asset.toString());
 			getLogger().info(assetConfig.toString());
+
+			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss, assetConfig.isRealEval());
+			
 			cotationGrid.forEach( cot -> getLogger().info(cot.toString()) );			
 			getLogger().info("");
 		}		
@@ -352,7 +357,12 @@ public class CotationService extends CommonService {
 					}
 				}
 				
-				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && percentLoss <= -maxPercentLoss && maxVarHigh <= maxVarLow);
+				boolean positiveVar5m = (cotation.getVar5m() != null && cotation.getVar5m().doubleValue() > 0d);
+				boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
+				boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
+				boolean negativeVar = !positiveVar5m && !positiveVar15m && !positiveVar30m;
+				
+				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d && negativeVar) || (realEval && percentLoss <= -maxPercentLoss && maxVarHigh <= maxVarLow);
 				
 				// évaluation achat-vente uniquement si la cotation n'est pas celle de référence
 				// la cotation initiale est la référence de calcul pour les autres : elle ne doit pas être mise à jour
@@ -389,13 +399,13 @@ public class CotationService extends CommonService {
 								if (deltaPrice <= -stopLoss) {
 									nbLoss++;
 									percentLoss += deltaPrice;
-									message += nbLoss + "Stop Loss " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
+									message += nbLoss + " Stop Loss (" + stopLoss + ") => " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else if (stopTrading) {
-									message += "Stop Trading " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
+									message += "Stop Trading => " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else {
 									nbLoss = 0;
 									percentLoss = 0d;
-									message += "Take Profit " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
+									message += "Take Profit => " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								}
 								getLogger().info(message);
 								getLogger().info(cotation.toString());
@@ -412,8 +422,6 @@ public class CotationService extends CommonService {
 
 							// on tente de sécuriser l'achat au maximum en fonction de la tendance et des pertes déjà subies
 							boolean isTrendOK = isTrendOK(cotation, asset, realEval);
-							boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
-							boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
 							boolean positiveVar = positiveVar15m;
 							if (nbLoss > 0) {
 								positiveVar &= positiveVar30m;
@@ -481,7 +489,7 @@ public class CotationService extends CommonService {
 					Double trend = (actualBestBuyPrice - prevBestBuyPrice) / prevBestBuyPrice;
 					Double estimatedBuyPrice;
 					if (trend > 0) {
-						estimatedBuyPrice = actualBestBuyPrice * trend;
+						estimatedBuyPrice = actualBestBuyPrice * (1 + trend);
 					} else {
 						estimatedBuyPrice = actualBestBuyPrice;
 					}
@@ -492,7 +500,7 @@ public class CotationService extends CommonService {
 						if (realEval) {
 							String message = "-- Trend KO pour " + cotation.getSymbol() + " à " + cotation.getDatetime();
 							getLogger().info(message);
-							message	= " -- trend: " + trend * 100 + "%" + " -- estimated buy price: " + estimatedBuyPrice  
+							message	= " -- trend: " + trend * 100 + "%" + " -- estimated buy price: " + estimatedBuyPrice
 									+ " -- actual price: " + price + " -- gap: " + gapBetweenPrices;
 							getLogger().info(message);
 							getLogger().info("");
