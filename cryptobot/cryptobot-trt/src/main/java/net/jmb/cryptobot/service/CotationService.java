@@ -362,7 +362,7 @@ public class CotationService extends CommonService {
 				boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
 				boolean negativeVar = !positiveVar5m && !positiveVar15m && !positiveVar30m;
 				
-				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d && negativeVar) || (realEval && percentLoss <= -maxPercentLoss && maxVarHigh <= maxVarLow);
+				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && percentLoss <= -maxPercentLoss && maxVarHigh <= maxVarLow);
 				
 				// évaluation achat-vente uniquement si la cotation n'est pas celle de référence
 				// la cotation initiale est la référence de calcul pour les autres : elle ne doit pas être mise à jour
@@ -380,7 +380,7 @@ public class CotationService extends CommonService {
 						amountB100 = quantity * cotation.getPrice();
 						boolean isDelayOK = (lastBuy == null || cotation.getDatetime().getTime() - lastBuy.getTime() > delayBetweenTrades);
 						
-						if (stopTrading || deltaFromBestBuy >= maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
+						if (stopTrading && negativeVar || deltaFromBestBuy >= maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
 							
 							currentSide = OrderSide.SELL;	
 							quantity = 0d;
