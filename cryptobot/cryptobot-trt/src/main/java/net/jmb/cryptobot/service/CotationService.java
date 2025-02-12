@@ -380,7 +380,7 @@ public class CotationService extends CommonService {
 						amountB100 = quantity * cotation.getPrice();
 						boolean isDelayOK = (lastBuy == null || cotation.getDatetime().getTime() - lastBuy.getTime() > delayBetweenTrades);
 						
-						if (stopTrading && negativeVar || deltaFromBestBuy >= maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
+						if (stopTrading && (negativeVar || deltaPrice < 0d) || deltaFromBestBuy >= maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
 							
 							currentSide = OrderSide.SELL;	
 							quantity = 0d;
