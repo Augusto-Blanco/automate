@@ -357,11 +357,9 @@ public class CotationService extends CommonService {
 					}
 				}
 				
-				boolean positiveVar5m = (cotation.getVar5m() != null && cotation.getVar5m().doubleValue() > 0d);
 				boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
 				boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
-				boolean negativeVar = !positiveVar5m && !positiveVar15m && !positiveVar30m;
-				
+
 				stopTrading = (maxVarHigh == 100d && maxVarLow == 100d) || (realEval && percentLoss <= -maxPercentLoss && maxVarHigh <= maxVarLow);
 				
 				// évaluation achat-vente uniquement si la cotation n'est pas celle de référence
@@ -380,7 +378,7 @@ public class CotationService extends CommonService {
 						amountB100 = quantity * cotation.getPrice();
 						boolean isDelayOK = (lastBuy == null || cotation.getDatetime().getTime() - lastBuy.getTime() > delayBetweenTrades);
 						
-						if (stopTrading && (negativeVar || deltaPrice < 0d) || deltaFromBestBuy >= maxVarHigh && isDelayOK || deltaPrice <= -stopLoss) {
+						if (deltaFromBestBuy >= maxVarHigh && isDelayOK || deltaPrice <= -stopLoss || realEval && percentLoss <= -maxPercentLoss) {
 							
 							currentSide = OrderSide.SELL;	
 							quantity = 0d;
@@ -408,8 +406,6 @@ public class CotationService extends CommonService {
 									message += "Take Profit => " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else if (deltaPrice <= -stopLoss) {
 									message += nbLoss + " Stop Loss (" + stopLoss + ") => "	+ BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
-								} else if (stopTrading) {
-									message += "Stop Trading => " + BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								}
 								
 								getLogger().info(message);
