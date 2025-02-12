@@ -587,6 +587,45 @@ public class CotationService extends CommonService {
 	
 	
 	@Transactional
+	public void checkAndResetLossForCotations(Asset asset) {
+		
+		if (asset != null) {
+			String symbol = asset.getSymbol();			
+			
+			Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
+			
+			if (lastRatedCotation != null) {
+				Integer nbLoss = lastRatedCotation.getNbLoss();
+				
+				if (nbLoss != null && nbLoss > 0) {
+					
+					Period period = asset.getAnalysisPeriodEnum();
+					Date previousDateForPeriod = PeriodUtil.previousDateForPeriod(lastRatedCotation.getDatetime(), period);
+					List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod);
+					
+					if (allCotations != null && allCotations.size() > 1) {						
+						int endIndex = allCotations.indexOf(lastRatedCotation);
+						if (endIndex > 0) {
+							boolean reset = true;
+							for (int i = endIndex; i > -1; i--) {
+								Cotation cotation = allCotations.get(i);
+								if (!nbLoss.equals(cotation.getNbLoss())) {
+									reset = false;
+									break;
+								}
+							}
+							if (reset) {
+								lastRatedCotation.nbLoss(0);
+							}
+						}
+					}		
+				}
+			}
+		}
+	}
+	
+	
+	@Transactional
 	public List<Cotation> computeCotations(String symbol, Period period) {
 		
 		List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, PeriodUtil.previousDateForPeriod(null, period));
