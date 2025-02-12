@@ -395,18 +395,23 @@ public class CotationService extends CommonService {
 							}
 							
 							if (realEval) {
-								String message = "Vente " + cotation.getSymbol() + ": ";
-								if (deltaPrice <= -stopLoss) {
-									nbLoss++;
-									percentLoss += deltaPrice;
-									message += nbLoss + " Stop Loss (" + stopLoss + ") => " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
-								} else if (stopTrading) {
-									message += "Stop Trading => " +  BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
-								} else {
+								
+								if (deltaPrice >= 0d) {
 									nbLoss = 0;
 									percentLoss = 0d;
+								} else {
+									nbLoss++;
+									percentLoss += deltaPrice;									
+								}								
+								String message = "Vente " + cotation.getSymbol() + ": ";								
+								if (deltaFromBestBuy >= maxVarHigh) {
 									message += "Take Profit => " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
+								} else if (deltaPrice <= -stopLoss) {
+									message += nbLoss + " Stop Loss (" + stopLoss + ") => "	+ BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
+								} else if (stopTrading) {
+									message += "Stop Trading => " + BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								}
+								
 								getLogger().info(message);
 								getLogger().info(cotation.toString());
 								getLogger().info("");
