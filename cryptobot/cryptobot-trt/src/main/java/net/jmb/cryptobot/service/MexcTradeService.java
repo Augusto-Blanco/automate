@@ -68,7 +68,7 @@ public class MexcTradeService extends TradeService {
 									freeAmount = maxInvest;
 								}
 								Double lastPrice = restClientService.getLastPrice(symbol);
-								if (freeAmount > 0d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
+								if (freeAmount > 1d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
 									Double quantity = freeAmount / lastPrice; 
 									trade = sendOrder(OrderSide.BUY, quantity, lastPrice);			
 								}
