@@ -2,6 +2,7 @@ package net.jmb.cryptobot.data.entity;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import jakarta.persistence.Entity;
@@ -122,11 +123,12 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 
 	@Override
 	public String toString() {
-		return "AssetConfig [symbol=" + symbol + ", start=" + startTime + ", end=" + endTime + ", maxVarHigh=" + maxVarHigh
-				+ ", maxVarLow=" + maxVarLow + ", stopLoss=" + stopLoss + "]";
+		SimpleDateFormat df = new SimpleDateFormat("dd/MM HH:mm");
+		return "AssetConfig " + symbol + " [maxVarLow=" + maxVarLow + ", maxVarHigh=" + maxVarHigh + ", stopLoss=" + stopLoss 
+							+ ", start=" + df.format(startTime) + ", end=" + df.format(endTime) + "]";
 	}
 
-
+	
 	public boolean isRealEval() {
 		return realEval;
 	}

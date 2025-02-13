@@ -64,12 +64,14 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	private BigDecimal amountB100;
 	private Integer nbLoss;
 	private Double percentLoss;
-	private Boolean canResetBestPrice;
+	private Boolean canResetBestSellPrice;
+	private Boolean canResetBestBuyPrice;
 	
 	//bi-directional one-to-one association to Trade
 	@OneToOne()
 	@JoinColumn(name = "tradeId")
 	private Trade trade;
+
 
 
 	public Cotation() {
@@ -461,11 +463,13 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 				.prevBestBuyPrice(bestBuyPrice)
 				.bestBuyPrice(null)
 				.bestSellPrice(null)
-				.currentSide((String)null)
+				.currentSide((String) null)
 				.flagBuy(null)
 				.flagSell(null)
 				.nbLoss(0)
-				.percentLoss(0d);
+				.percentLoss(0d)
+				.canResetBestSellPrice(true)
+				.canResetBestBuyPrice(false);
 		}
 
 
@@ -593,13 +597,15 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 
 		@Override
 		public String toString() {
-			String date = (datetime != null) ? new SimpleDateFormat("dd-MM HH:mm").format(datetime) : null;
-			return "[" + symbol + " " + date + ", price=" + price + ", amount=" + amountB100 + ", side=" + currentSide + ", nbLoss=" + nbLoss 
-					+ ", bestBuy=" + bestBuyPrice + ", prevBestBuy=" + prevBestBuyPrice + ", bestSell=" + bestSellPrice 
-					+ ", canReset=" + canResetBestPrice + ", buyPrice=" + buyPrice + ", sellPrice=" + sellPrice + "]";
+			String date = (datetime != null) ? new SimpleDateFormat("dd/MM HH:mm").format(datetime) : null;
+			BigDecimal pctLoss = percentLoss != null ? BigDecimal.valueOf(percentLoss).setScale(1, RoundingMode.HALF_EVEN) : BigDecimal.ZERO;
+			return symbol + " " + date + " " + currentSide + " [nbLoss=" + nbLoss + ", pctLoss=" + pctLoss + ", amount=" + amountB100 + ", price=" + price 
+					+ ", buyPrice=" + buyPrice + ", sellPrice=" + sellPrice + ", bestBuy=" + bestBuyPrice + ", prevBestBuy=" + prevBestBuyPrice 
+					+ ", bestSell=" + bestSellPrice + ", canResetBestSell=" + canResetBestSellPrice + ", canResetBestBuy=" + canResetBestBuyPrice + "]";
 		}
 
-
+//		[DEEPSEEK 13-02 08:20, side=BUY, amount=112.16, price=0.00178, buyPrice=0.001927, sellPrice=0.001974, bestBuy=0.001793, prevBestBuy=0.001974, bestSell=0.00215, nbLoss=0, canReset=true]
+		
 		public Double getBuyPrice() {
 			return buyPrice;
 		}
@@ -667,12 +673,21 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 			return this;
 		}
 		
-		public Boolean canResetBestPrice() {
-			return canResetBestPrice;
+		public Boolean canResetBestSellPrice() {
+			return canResetBestSellPrice;
 		}
 
-		public Cotation canResetBestPrice(Boolean canResetBestPrice) {
-			this.canResetBestPrice = canResetBestPrice;
+		public Cotation canResetBestSellPrice(Boolean canResetBestSellPrice) {
+			this.canResetBestSellPrice = canResetBestSellPrice;
+			return this;
+		}
+		
+		public Boolean canResetBestBuyPrice() {
+			return canResetBestBuyPrice;
+		}
+
+		public Cotation canResetBestBuyPrice(Boolean canResetBestBuyPrice) {
+			this.canResetBestBuyPrice = canResetBestBuyPrice;
 			return this;
 		}
 

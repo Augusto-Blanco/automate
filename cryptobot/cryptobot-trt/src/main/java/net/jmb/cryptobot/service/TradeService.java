@@ -83,8 +83,8 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	
 	
 	@Transactional	
-	@Scheduled(cron = "00 07 * * * *")	
-	@Scheduled(cron = "00 37 * * * *")	
+	@Scheduled(cron = "00 07 * * * *")
+	@Scheduled(cron = "00 37 * * * *")
 	public synchronized void checkAndResetLossForCotations() throws Exception {
 		cotationService.checkAndResetLossForCotations(asset);
 	}

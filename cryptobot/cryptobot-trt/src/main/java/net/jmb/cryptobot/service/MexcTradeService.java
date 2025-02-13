@@ -58,6 +58,7 @@ public class MexcTradeService extends TradeService {
 						Cotation cotation = lastCotations.get(lastCotations.size() - 1);
 						AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);
 		
+						getLogger().info("-- Evaluate trade --");
 						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.realEval(true));
 						
 	

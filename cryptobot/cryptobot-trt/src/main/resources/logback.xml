@@ -5,8 +5,8 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://ch.qos.logback/xml/ns/logback logback.xsd">
 
-	<property name="pattern" value="%d{HH:mm:ss} [%thread] %-5level %logger -- %msg%n" />
-	<property name="patternCotation" value="%d{HH:mm:ss} -- %msg%n" />
+	<property name="pattern" value="%d{yyyy-MM-dd HH:mm:ss} %-5level %logger -- %msg%n" />
+	<property name="patternCotation" value="%d{yyyy-MM-dd HH:mm:ss} -- %msg%n" />
 	<property name="sql.level" value="warn" />
 	<property name="root.level" value="warn" />
 	<property name="cryptobot.level" value="info" />
@@ -94,15 +94,15 @@
 			<appender-ref ref="HIBERNATE_FILE" />
 		</logger>
 		
-		<logger name="net.jmb.cryptobot.service.CotationService" level="${cryptobot.level}">
+		<logger name="net.jmb.cryptobot.service" level="${cryptobot.level}" additivity="false">
 			<appender-ref ref="COTATION_FILE" />
 		</logger>
 	
-		<logger name="net.jmb.cryptobot.service" level="${cryptobot.level}">
+		<logger name="net.jmb.cryptobot" level="${cryptobot.level}" additivity="false">
 			<appender-ref ref="CRYPTOBOT_FILE" />
 		</logger>
 		
-		<logger name="org.springframework" level="${cryptobot.level}">
+		<logger name="org.springframework" level="${cryptobot.level}" additivity="false">
 			<appender-ref ref="CRYPTOBOT_FILE" />
 		</logger>
 		
