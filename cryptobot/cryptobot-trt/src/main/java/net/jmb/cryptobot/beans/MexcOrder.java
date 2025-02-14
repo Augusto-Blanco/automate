@@ -14,6 +14,14 @@ public class MexcOrder {
 	Double origQty;
 	Double price;
 	
+	Double executedQty;
+	Double cummulativeQuoteQty;
+	String status;
+	Long time;
+	Long updateTime;
+	Boolean isWorking;
+	Double origQuoteOrderQty;
+
 	
 	public Long getTransactTime() {
 		return transactTime;
@@ -66,8 +74,54 @@ public class MexcOrder {
 	}
 	@Override
 	public String toString() {
-		return "MexcOrder [orderId=" + orderId + ", symbol=" + symbol + ", side=" + side + ", origQty=" + origQty
-				+ ", price=" + price + ", getDateTime()=" + getDateTime() + "]";
+		return "MexcOrder [transactTime=" + transactTime + ", orderId=" + orderId + ", symbol=" + symbol + ", side="
+				+ side + ", type=" + type + ", origQty=" + origQty + ", price=" + price + ", executedQty=" + executedQty
+				+ ", cummulativeQuoteQty=" + cummulativeQuoteQty + ", status=" + status + ", time=" + time
+				+ ", updateTime=" + updateTime + ", isWorking=" + isWorking + ", origQuoteOrderQty=" + origQuoteOrderQty
+				+ "]";
+	}
+	
+	public Double getExecutedQty() {
+		return executedQty;
+	}
+	public void setExecutedQty(Double executedQty) {
+		this.executedQty = executedQty;
+	}
+	public Double getCummulativeQuoteQty() {
+		return cummulativeQuoteQty;
+	}
+	public void setCummulativeQuoteQty(Double cummulativeQuoteQty) {
+		this.cummulativeQuoteQty = cummulativeQuoteQty;
+	}
+	public String getStatus() {
+		return status;
+	}
+	public void setStatus(String status) {
+		this.status = status;
+	}
+	public Long getTime() {
+		return time;
+	}
+	public void setTime(Long time) {
+		this.time = time;
+	}
+	public Long getUpdateTime() {
+		return updateTime;
+	}
+	public void setUpdateTime(Long updateTime) {
+		this.updateTime = updateTime;
+	}
+	public Boolean getIsWorking() {
+		return isWorking;
+	}
+	public void setIsWorking(Boolean isWorking) {
+		this.isWorking = isWorking;
+	}
+	public Double getOrigQuoteOrderQty() {
+		return origQuoteOrderQty;
+	}
+	public void setOrigQuoteOrderQty(Double origQuoteOrderQty) {
+		this.origQuoteOrderQty = origQuoteOrderQty;
 	}
 	
 	

@@ -46,7 +46,7 @@ public abstract class TradeService extends CommonService implements CommandLineR
 		if (symbol != null) {
 			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
 
-			if (canExchange() || StringUtils.isBlank(initDate)) {
+			if (canExchange()) {
 				registerLastCotations();
 			}
 			evaluateLastCotations();
@@ -68,15 +68,12 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	@Transactional	
 	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")	
 	public synchronized Cotation evaluateLastCotations() throws Exception {
-		
-		if (canExchange()) {
-			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);		
-			if (asset != null) {
-				
-				Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
-				Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
-				return lastCotation;
-			}
+
+		asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
+		if (asset != null) {
+			Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
+			Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
+			return lastCotation;
 		}
 		return null;
 	}

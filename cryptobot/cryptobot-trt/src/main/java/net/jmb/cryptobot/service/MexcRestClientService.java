@@ -183,6 +183,35 @@ public class MexcRestClientService extends CommonService {
 		return null;
 	}
 	
+
+	
+	@SuppressWarnings("serial")
+	public MexcOrder requestOrder(String symbol, String orderId) {
+
+		if (mexcRestTemplate != null && orderId != null) {
+			
+			String url = BASE_URL + "/order";
+			HttpMethod httpMethod = HttpMethod.GET;
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {
+				{
+					add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+					add("orderId", orderId);
+				}
+			};
+
+			try {
+				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
+				ResponseEntity<MexcOrder> result = mexcRestTemplate.exchange(request, MexcOrder.class);
+				MexcOrder order = result.getBody();
+				return order;
+
+			} catch (Exception e) {
+				getLogger().error(e.getMessage(), e);
+			}
+		}
+		return null;
+	}
+	
 	
 	protected RequestEntity<?> buildRequest(String url, HttpMethod httpMethod, LinkedMultiValueMap<String, String> queryParams) throws URISyntaxException {
 		

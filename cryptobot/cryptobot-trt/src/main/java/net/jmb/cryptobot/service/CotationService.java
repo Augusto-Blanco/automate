@@ -186,6 +186,7 @@ public class CotationService extends CommonService {
 		for (AssetConfig assetConfig : assetConfigList) {
 			List<Cotation> cotationList = map.get(assetConfig);
 			if (lastCotation != null) {
+				checkAndResetLossForCotation(asset, lastCotation);
 				cotationList.add(0, lastCotation);
 			}
 			evaluateTradesForCotations(cotationList, asset, assetConfig.realEval(true));
@@ -381,17 +382,24 @@ public class CotationService extends CommonService {
 						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
 						amountB100 = quantity * cotation.getPrice();
 						
-						if (deltaFromBestBuy >= maxVarHigh || deltaPrice <= -stopLoss || realEval && percentLoss <= -maxPercentLoss) {
+						boolean positiveSellCondition = deltaFromBestBuy >= maxVarHigh;
+						if (realEval) {
+							positiveSellCondition = (deltaFromBestBuy >= 0.95 * maxVarHigh || stopTrading && deltaPrice > 0d && deltaFromBestBuy >= asset.getVarLowLimit());
+						}
+						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);						
+						
+						if (positiveSellCondition || negativeSellCondition) {
 							
-							currentSide = OrderSide.SELL;	
+							currentSide = OrderSide.SELL;
 							quantity = 0d;
 							amountB100 = amountB100 * (1 - fees);
 							sellPrice = cotation.getPrice();
 							cotation.flagSell();
 							
-							if (deltaFromBestBuy >= maxVarHigh) {								
+							if (deltaPrice > 0d) {								
 								bestSellPrice = cotation.getPrice();
 								canResetBestSellPrice = false;
+								canResetBestBuyPrice = true;
 							}
 							
 							if (realEval) {
@@ -404,7 +412,7 @@ public class CotationService extends CommonService {
 									percentLoss += deltaPrice;									
 								}								
 								String message = "Vente " + cotation.getSymbol() + ": ";								
-								if (deltaFromBestBuy >= maxVarHigh) {
+								if (deltaPrice > 0d) {
 									message += "Take Profit => " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else if (deltaPrice <= -stopLoss) {
 									message += nbLoss + " Stop Loss (" + stopLoss + ") => "	+ BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
@@ -442,6 +450,7 @@ public class CotationService extends CommonService {
 								quantity = amountB100 / cotation.getPrice();
 								cotation.flagBuy();
 								canResetBestSellPrice = true;
+								canResetBestBuyPrice = false;
 								
 								if (realEval) {
 									String message = "Achat " + cotation.getSymbol() + ": delta vente " + BigDecimal.valueOf(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN) + "%";
@@ -457,15 +466,16 @@ public class CotationService extends CommonService {
 					
 					if (bestBuyPrice == null || cotation.getPrice() < bestBuyPrice) {
 						bestBuyPrice = cotation.getPrice();
-					} else if (canResetBestBuyPrice != null && canResetBestBuyPrice && deltaFromBestSell <= -maxVarLow) {
+					} else if (realEval && canResetBestBuyPrice != null && canResetBestBuyPrice && deltaFromBestSell <= -maxVarLow) {
 						prevBestBuyPrice = cotation.getBestBuyPrice();
 						bestBuyPrice = cotation.getPrice();
 						canResetBestBuyPrice = false;
+						canResetBestSellPrice = true;
 					}
 					
 					if (bestSellPrice == null || cotation.getPrice() > bestSellPrice) {
 						bestSellPrice = cotation.getPrice();
-					} else if (canResetBestSellPrice != null && canResetBestSellPrice && deltaFromBestBuy >= maxVarHigh) {
+					} else if (realEval && canResetBestSellPrice != null && canResetBestSellPrice && deltaFromBestBuy >= maxVarHigh) {
 						bestSellPrice = cotation.getPrice();
 						canResetBestSellPrice = false;
 						canResetBestBuyPrice = true;
@@ -485,7 +495,7 @@ public class CotationService extends CommonService {
 	
 	private boolean isTrendOK(Cotation cotation, Asset asset, boolean realEval) {
 		boolean trendOK = true;
-		if (OrderSide.SELL.equals(cotation.getCurrentOrderSide())) {
+		if (realEval && OrderSide.SELL.equals(cotation.getCurrentOrderSide())) {
 			Double gapFromTrend = asset.getGapFromTrend();
 			if (gapFromTrend != null && gapFromTrend > 0) {
 				Double prevBestBuyPrice = cotation.getPrevBestBuyPrice();
@@ -591,37 +601,44 @@ public class CotationService extends CommonService {
 		
 		if (asset != null) {
 			String symbol = asset.getSymbol();			
-			
-			Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
-			
+			Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);			
 			if (lastRatedCotation != null) {
-				Integer nbLoss = lastRatedCotation.getNbLoss();
-				
-				if (nbLoss != null && nbLoss > 0) {
-					
-					Period period = asset.getAnalysisPeriodEnum();
-					Date previousDateForPeriod = PeriodUtil.previousDateForPeriod(lastRatedCotation.getDatetime(), period);
-					List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod);
-					
-					if (allCotations != null && allCotations.size() > 1) {						
-						int endIndex = allCotations.indexOf(lastRatedCotation);
-						if (endIndex > 0) {
-							boolean reset = true;
-							for (int i = endIndex; i > -1; i--) {
-								Cotation cotation = allCotations.get(i);
-								if (!nbLoss.equals(cotation.getNbLoss())) {
-									reset = false;
-									break;
-								}
-							}
-							if (reset) {
-								lastRatedCotation.nbLoss(0).percentLoss(0d);
-								getLogger().info("-- Check and reset loss for :");
-								getLogger().info(lastRatedCotation.toString());
-								getLogger().info("");
+				checkAndResetLossForCotation(asset, lastRatedCotation);
+			}
+		}
+	}
+	
+	public void checkAndResetLossForCotation(Asset asset, Cotation cotation) {
+
+		if (asset != null && cotation != null) {
+			
+			String symbol = asset.getSymbol();
+			Integer nbLoss = cotation.getNbLoss();
+
+			if (nbLoss != null && nbLoss > 0) {
+
+				Period period = asset.getAnalysisPeriodEnum();
+				Date previousDateForPeriod = PeriodUtil.previousDateForPeriod(cotation.getDatetime(), period);
+				List<Cotation> allCotations = cryptobotRepository.getCotationsSinceDate(symbol, previousDateForPeriod);
+
+				if (allCotations != null && allCotations.size() > 1) {
+					int endIndex = allCotations.indexOf(cotation);
+					if (endIndex > 0) {
+						boolean reset = true;
+						for (int i = endIndex; i > -1; i--) {
+							Cotation initialCotation = allCotations.get(i);
+							if (!nbLoss.equals(initialCotation.getNbLoss())) {
+								reset = false;
+								break;
 							}
 						}
-					}		
+						if (reset) {
+							cotation.nbLoss(0).percentLoss(0d);
+							getLogger().info("-- Check and reset loss for :");
+							getLogger().info(cotation.toString());
+							getLogger().info("");
+						}
+					}
 				}
 			}
 		}
