@@ -360,7 +360,6 @@ public class CotationService extends CommonService {
 					}
 				}
 				
-				boolean positiveVar5m = (cotation.getVar5m() != null && cotation.getVar5m().doubleValue() > 0d);
 				boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
 				boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
 
@@ -427,11 +426,11 @@ public class CotationService extends CommonService {
 	
 					} else if (currentSide.equals(OrderSide.SELL)) {
 							
-						if (deltaFromBestSell <= -maxVarLow && !stopTrading) {	
+						if (deltaFromBestSell <= -maxVarLow && !stopTrading) {
 
 							// on tente de sécuriser l'achat au maximum en fonction de la tendance et des pertes déjà subies
 							boolean isTrendOK = isTrendOK(cotation, asset, realEval);
-							boolean positiveVar = positiveVar5m && positiveVar15m;
+							boolean positiveVar = positiveVar15m;
 							if (nbLoss > 0) {
 								positiveVar &= positiveVar30m;
 							}
@@ -459,23 +458,28 @@ public class CotationService extends CommonService {
 											+ " -- Var 30min: " + cotation.getVar30m();
 									getLogger().info(message);
 									getLogger().info("-- " + cotation.toString());
-								}	
+								}
+								
 							}
 						}
 					}
 					
+					boolean isResetBuy = false;
 					if (bestBuyPrice == null || cotation.getPrice() < bestBuyPrice) {
 						bestBuyPrice = cotation.getPrice();
-					} else if (realEval && canResetBestBuyPrice != null && canResetBestBuyPrice && deltaFromBestSell <= -maxVarLow) {
+						canResetBestBuyPrice = false;
+						canResetBestSellPrice = true;
+					} else if (realEval && Boolean.TRUE.equals(canResetBestBuyPrice) && deltaFromBestSell <= -maxVarLow) {
+						isResetBuy = true;
 						prevBestBuyPrice = cotation.getBestBuyPrice();
 						bestBuyPrice = cotation.getPrice();
 						canResetBestBuyPrice = false;
 						canResetBestSellPrice = true;
 					}
 					
-					if (bestSellPrice == null || cotation.getPrice() > bestSellPrice) {
-						bestSellPrice = cotation.getPrice();
-					} else if (realEval && canResetBestSellPrice != null && canResetBestSellPrice && deltaFromBestBuy >= maxVarHigh) {
+					if (bestSellPrice == null || cotation.getPrice() > bestSellPrice
+							|| realEval && Boolean.TRUE.equals(canResetBestSellPrice) && deltaFromBestBuy >= maxVarHigh && !isResetBuy) {
+						
 						bestSellPrice = cotation.getPrice();
 						canResetBestSellPrice = false;
 						canResetBestBuyPrice = true;
