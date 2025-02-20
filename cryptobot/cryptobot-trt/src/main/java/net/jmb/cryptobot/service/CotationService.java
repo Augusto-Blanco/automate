@@ -360,6 +360,7 @@ public class CotationService extends CommonService {
 					}
 				}
 				
+				boolean positiveVar5m = (cotation.getVar5m() != null && cotation.getVar5m().doubleValue() >= 0d);
 				boolean positiveVar15m = (cotation.getVar15m() != null && cotation.getVar15m().doubleValue() > 0d);
 				boolean positiveVar30m = (cotation.getVar30m() != null && cotation.getVar30m().doubleValue() > 0d);
 
@@ -376,6 +377,8 @@ public class CotationService extends CommonService {
 					Double deltaFromBestBuy = (cotation.getPrice() - bestBuyPrice) / bestBuyPrice * 100;
 					Double deltaFromBestSell = (bestSellPrice != null && bestSellPrice > 0d) ? ((cotation.getPrice() - bestSellPrice) / bestSellPrice * 100) : 0d;
 					
+					boolean isResetBuy = false;
+					
 					if (currentSide.equals(OrderSide.BUY)) {
 						
 						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
@@ -383,7 +386,7 @@ public class CotationService extends CommonService {
 						
 						boolean positiveSellCondition = deltaFromBestBuy >= maxVarHigh;
 						if (realEval) {
-							positiveSellCondition = (deltaFromBestBuy >= 0.95 * maxVarHigh || stopTrading && deltaPrice > 0d && deltaFromBestBuy >= asset.getVarLowLimit());
+							positiveSellCondition = (deltaFromBestBuy >= maxVarHigh || stopTrading && deltaPrice > 0d && deltaFromBestBuy >= asset.getVarLowLimit());
 						}
 						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);						
 						
@@ -430,21 +433,23 @@ public class CotationService extends CommonService {
 
 							// on tente de sécuriser l'achat au maximum en fonction de la tendance et des pertes déjà subies
 							boolean isTrendOK = isTrendOK(cotation, asset, realEval);
-							boolean positiveVar = positiveVar15m;
+							boolean positiveVar = positiveVar5m;
 							if (nbLoss > 0) {
-								positiveVar &= positiveVar30m;
+								positiveVar &= positiveVar15m && positiveVar30m;
 							}
-							if (nbLoss > 2 || realEval && percentLoss <= -maxPercentLoss) {
+							if (nbLoss > 1 || realEval && percentLoss <= -maxPercentLoss) {
 								positiveVar &= (maxVarHigh > maxVarLow);
 							}
 							
-							if (nbLoss == 0 && isTrendOK || (nbLoss == 0 || isTrendOK) && positiveVar) {
+							if (isTrendOK && positiveVar) {
+//							if (nbLoss == 0 && isTrendOK || (nbLoss == 0 || isTrendOK) && positiveVar) {
 								
 								currentSide = OrderSide.BUY;
 								buyPrice = cotation.getPrice();
 								if (cotation.getPrice() < bestBuyPrice || Boolean.TRUE.equals(canResetBestBuyPrice)) { 
 									prevBestBuyPrice = bestBuyPrice;
 									bestBuyPrice = cotation.getPrice();
+									isResetBuy = true;
 								}
 								deltaFromBestBuy = 0d;
 								amountB100 = amountB100 * (1 - fees);
@@ -466,7 +471,6 @@ public class CotationService extends CommonService {
 						}
 					}
 					
-					boolean isResetBuy = false;
 					if (bestBuyPrice == null || cotation.getPrice() < bestBuyPrice) {
 						bestBuyPrice = cotation.getPrice();
 						canResetBestBuyPrice = false;
