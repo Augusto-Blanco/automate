@@ -11,6 +11,7 @@ public enum Period implements Comparable<Period> {
 	_6h("6h"),
 	_12h("12h"),
 	_24h("24h"),
+	_48h("48h"),
 	_6j("6j"),
 	_12j("12j"),
 	_30j("30j"),

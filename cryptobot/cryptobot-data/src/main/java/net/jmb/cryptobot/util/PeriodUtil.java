@@ -27,6 +27,7 @@ public class PeriodUtil {
 			case _6h -> seconds - 6 * 60 * 60;
 			case _12h -> seconds - 12 * 60 * 60;
 			case _24h -> seconds - 24 * 60 * 60;
+			case _48h -> seconds - 48 * 60 * 60;
 			case _6j -> seconds - 6 * 24 * 60 * 60;
 			case _12j -> seconds - 12 * 24 * 60 * 60;
 			case _30j -> seconds - 30 * 24 * 60 * 60;
@@ -59,6 +60,7 @@ public class PeriodUtil {
 			case _6h -> seconds + 6 * 60 * 60;
 			case _12h -> seconds + 12 * 60 * 60;
 			case _24h -> seconds + 24 * 60 * 60;
+			case _48h -> seconds + 48 * 60 * 60;
 			case _6j -> seconds + 6 * 24 * 60 * 60;
 			case _12j -> seconds + 12 * 24 * 60 * 60;
 			case _30j -> seconds + 30 * 24 * 60 * 60;

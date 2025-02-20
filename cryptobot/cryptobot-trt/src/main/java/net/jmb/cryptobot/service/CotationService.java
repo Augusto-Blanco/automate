@@ -207,14 +207,14 @@ public class CotationService extends CommonService {
 			Double lowLimit = asset.getVarLowLimit();
 			Double highLimit = asset.getVarHighLimit();
 			Double minStopLoss = asset.getStopLossStart() != null ? asset.getStopLossStart() : 0.5d;
-			Double maxStopLoss = asset.getStopLossLimit().doubleValue();
+//			Double maxStopLoss = asset.getStopLossLimit().doubleValue();
 			
 			
 			BigDecimal amountB100 = null;
 			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = minStopLoss;
 			Double bestVarHigh = null, bestVarLow = null, bestStopLoss = null;
 
-			while (stopLoss <= maxStopLoss) {
+//			while (stopLoss <= maxStopLoss) {
 				while (maxVarHigh <= highLimit) {
 					while (maxVarLow <= highLimit) {
 						cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss);
@@ -229,9 +229,9 @@ public class CotationService extends CommonService {
 					maxVarLow = lowLimit;
 					maxVarHigh += 0.1d;
 				}
-				maxVarHigh = maxVarLow = lowLimit;
-				stopLoss += 0.1d;
-			}
+//				maxVarHigh = maxVarLow = lowLimit;
+//				stopLoss += 0.1d;
+//			}
 			// on compare à si on ne fait rien (variation 100% requise)
 			maxVarHigh = maxVarLow = 100d;
 			stopLoss = 0d;
@@ -413,10 +413,10 @@ public class CotationService extends CommonService {
 								String message = "Vente " + cotation.getSymbol() + ": ";								
 								if (deltaPrice > 0d) {
 									message += "Take Profit => " + BigDecimal.valueOf(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%";
-								} else if (deltaPrice <= -stopLoss) {
-									message += nbLoss + " Stop Loss (" + stopLoss + ") => "	+ BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								} else if (percentLoss <= -maxPercentLoss) {
 									message += "Percent Loss (max " + maxPercentLoss + ") => "	+ BigDecimal.valueOf(percentLoss).setScale(1, RoundingMode.HALF_EVEN) + "%";
+								} else {
+									message += nbLoss + " Stop Loss (" + stopLoss + ") => "	+ BigDecimal.valueOf(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%";
 								}
 								
 								getLogger().info(message);
@@ -442,8 +442,10 @@ public class CotationService extends CommonService {
 								
 								currentSide = OrderSide.BUY;
 								buyPrice = cotation.getPrice();
-								prevBestBuyPrice = bestBuyPrice;
-								bestBuyPrice = cotation.getPrice();
+								if (cotation.getPrice() < bestBuyPrice || Boolean.TRUE.equals(canResetBestBuyPrice)) { 
+									prevBestBuyPrice = bestBuyPrice;
+									bestBuyPrice = cotation.getPrice();
+								}
 								deltaFromBestBuy = 0d;
 								amountB100 = amountB100 * (1 - fees);
 								quantity = amountB100 / cotation.getPrice();
