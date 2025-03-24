@@ -2,6 +2,7 @@ package net.jmb.cryptobot.data.entity;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -17,6 +18,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.OrderState;
 
 /**
@@ -43,6 +45,9 @@ public class Trade extends AbstractEntity implements Serializable {
 	private Double price;	
 	private Double amount;	
 	private String state = OrderState.PENDING.name();
+	private Double execQty;
+	private Double execAmount;
+	private Double soldedQty;
 	
 	// bi-directional one-to-one association to Cotation
 	@OneToOne(mappedBy = "trade", fetch=FetchType.LAZY)
@@ -94,6 +99,10 @@ public class Trade extends AbstractEntity implements Serializable {
 		return state;
 	}
 	
+	public OrderState getOrderStateEnum() {
+		return OrderState.get(state);
+	}
+	
 
 	public void setState(String state) {
 		this.state = state;
@@ -138,6 +147,10 @@ public class Trade extends AbstractEntity implements Serializable {
 	public String getSide() {
 		return side;
 	}
+	
+	public OrderSide getOrderSideEnum() {
+		return OrderSide.get(side);
+	}
 
 
 	public void setSide(String side) {
@@ -175,61 +188,136 @@ public class Trade extends AbstractEntity implements Serializable {
 	}
 
 
-		public Trade platform(String platform) {
-			this.platform = platform;
-			return this;
+	public Trade platform(String platform) {
+		this.platform = platform;
+		return this;
+	}
+
+	public Trade symbol(String symbol) {
+		this.symbol = symbol;
+		return this;
+	}
+
+	public Trade time(Date time) {
+		this.time = time;
+		return this;
+	}
+
+	public Trade side(String side) {
+		this.side = side;
+		return this;
+	}
+
+	public Trade quantity(Double quantity) {
+		this.quantity = quantity;
+		return this;
+	}
+
+	public Trade price(Double price) {
+		this.price = price;
+		return this;
+	}
+
+	public Trade amount(Double amount) {
+		this.amount = amount;
+		return this;
+	}
+
+
+	public Trade cotation(Cotation cotation) {
+		this.cotation = cotation;
+		return this;
+	}
+
+
+	public String getTradeRef() {
+		return tradeRef;
+	}
+
+	public void setTradeRef(String tradeRef) {
+		this.tradeRef = tradeRef;
+	}
+	
+	public Trade tradeRef(String tradeRef) {
+		this.tradeRef = tradeRef;
+		return this;
+	}
+
+
+	public Double getExecQty() {
+		return execQty;
+	}
+
+
+	public void setExecQty(Double execQty) {
+		this.execQty = execQty;
+	}
+	
+	public Trade execQty(Double execQty) {
+		this.execQty = execQty;
+		return this;
+	}
+
+
+	public Double getExecAmount() {
+		return execAmount;
+	}
+
+
+	public void setExecAmount(Double execAmount) {
+		this.execAmount = execAmount;
+	}
+
+	public Trade execAmount(Double execAmount) {
+		this.execAmount = execAmount;
+		return this;
+	}
+
+
+	public Double getSoldedQty() {
+		return soldedQty;
+	}
+
+
+	public void setSoldedQty(Double soldedQty) {
+		this.soldedQty = soldedQty;
+	}
+	
+	public Trade soldedQty(Double soldedQty) {
+		this.soldedQty = soldedQty;
+		return this;
+	}
+
+
+	@Override
+	public String toString() {
+		return "Trade [symbol=" + symbol + ", tradeRef=" + tradeRef + ", time=" + time + ", side=" + side
+				+ ", quantity=" + quantity + ", price=" + price + ", amount=" + amount + ", state=" + state
+				+ ", execQty=" + execQty + ", execAmount=" + execAmount + ", soldedQty=" + soldedQty + "]";
+	}
+
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(platform, symbol, time, tradeRef);
+	}
+
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Trade other = (Trade) obj;
+		if (getId() == other.getId()) {
+			return true;
 		}
-
-		public Trade symbol(String symbol) {
-			this.symbol = symbol;
-			return this;
-		}
-
-		public Trade time(Date time) {
-			this.time = time;
-			return this;
-		}
-
-		public Trade side(String side) {
-			this.side = side;
-			return this;
-		}
-
-		public Trade quantity(Double quantity) {
-			this.quantity = quantity;
-			return this;
-		}
-
-		public Trade price(Double price) {
-			this.price = price;
-			return this;
-		}
-
-		public Trade amount(Double amount) {
-			this.amount = amount;
-			return this;
-		}
-
-
-		public Trade cotation(Cotation cotation) {
-			this.cotation = cotation;
-			return this;
-		}
-
-
-		public String getTradeRef() {
-			return tradeRef;
-		}
-
-		public void setTradeRef(String tradeRef) {
-			this.tradeRef = tradeRef;
-		}
-		
-		public Trade tradeRef(String tradeRef) {
-			this.tradeRef = tradeRef;
-			return this;
-		}
-
+		return Objects.equals(platform, other.platform) && Objects.equals(symbol, other.symbol)
+				&& Objects.equals(time, other.time) && Objects.equals(tradeRef, other.tradeRef);
+	}
 
 
 }

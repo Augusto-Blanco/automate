@@ -1,5 +1,6 @@
 package net.jmb.cryptobot.data.repository;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -11,7 +12,6 @@ import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Trade;
-import net.jmb.cryptobot.data.enums.OrderState;
 import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.util.PeriodUtil;
 
@@ -152,6 +152,7 @@ public class CryptobotRepository extends GenericRepository {
 			assetRepository.save(asset);
 		}		
 	}
+
 	
 	public Trade saveTrade(Trade trade) {
 		if (trade != null) {
@@ -162,11 +163,20 @@ public class CryptobotRepository extends GenericRepository {
 	
 		
 	
-	public List<Trade> getTradesForAsset(Long assetId) {
-		return tradeRepository.findByAssetId(assetId);
+	public List<Trade> getPendingTradesForAsset(Asset asset) {
+		return tradeRepository.findByAssetIdAndStateIn(asset.getId(), Arrays.asList("PENDING", "PARTIAL"));
 	}
 	
 
+	public List<Trade> getUnsoldedTradesForAsset(Asset asset) {
+		return tradeRepository.findByAssetIdAndNotSoldedQty(asset.getId());
+	}
+	
+	
+	public Trade getTradeForRef(String tradeRef) {
+		return tradeRepository.findByTradeRef(tradeRef);
+	}
+	
 	
 	public Cotation getCotationForTrade(Long tradeId) {
 		Cotation cotation = cotationRepository.findByTradeId(tradeId);
@@ -174,12 +184,7 @@ public class CryptobotRepository extends GenericRepository {
 	}
 	
 
-	public List<Trade> getPendingTrades() {
-		return tradeRepository.findByStateIn(List.of(OrderState.PENDING.name(), ""));
-	}
-	
-	
-	
+
 	
 	
 	public AssetRepository getAssetRepository() {

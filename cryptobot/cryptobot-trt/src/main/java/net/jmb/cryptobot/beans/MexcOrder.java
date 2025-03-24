@@ -1,6 +1,7 @@
 package net.jmb.cryptobot.beans;
 
 import java.util.Date;
+import java.util.stream.Stream;
 
 import net.jmb.cryptobot.data.enums.OrderSide;
 
@@ -21,6 +22,11 @@ public class MexcOrder {
 	Long updateTime;
 	Boolean isWorking;
 	Double origQuoteOrderQty;
+	
+	
+	public enum MexcStatus {
+		NEW, FILLED, PARTIALLY_FILLED, CANCELED, PARTIALLY_CANCELED;
+	}
 
 	
 	public Long getTransactTime() {
@@ -30,7 +36,7 @@ public class MexcOrder {
 		this.transactTime = transactTime;
 	}
 	public Date getDateTime() {
-		return new Date(transactTime);
+		return (time != null) ? new Date(time) : (transactTime != null) ? new Date(transactTime) : new Date();
 	}
 	
 	public String getOrderId() {
@@ -96,6 +102,13 @@ public class MexcOrder {
 	public String getStatus() {
 		return status;
 	}
+	public MexcStatus getStatusEnum() {
+		return Stream.of(MexcStatus.values())
+			.filter(status -> status.name().equals(getStatus()))
+			.findFirst()
+			.orElse(MexcStatus.NEW);
+	}
+	
 	public void setStatus(String status) {
 		this.status = status;
 	}

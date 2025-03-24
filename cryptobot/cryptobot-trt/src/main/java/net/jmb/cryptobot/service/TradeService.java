@@ -1,33 +1,49 @@
 package net.jmb.cryptobot.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.Cotation;
+import net.jmb.cryptobot.data.entity.Position;
 import net.jmb.cryptobot.data.entity.Trade;
 import net.jmb.cryptobot.data.enums.OrderSide;
+import net.jmb.cryptobot.data.enums.Period;
+import net.jmb.cryptobot.data.repository.AssetRepository;
+import net.jmb.cryptobot.data.repository.CryptobotRepository;
+import net.jmb.cryptobot.data.repository.PositionRepository;
 
 @Service
-public abstract class TradeService extends CommonService implements CommandLineRunner {
+public abstract class TradeService extends CommonService {
 
 	
 	@Autowired
 	CotationService cotationService = null;	
 	
-	@Value("${symbol}")
+	@Autowired
+	AssetRepository assetRepository;
+	
+	@Autowired
+	CryptobotRepository cryptobotRepository;
+	
+	@Autowired
+	PositionRepository positionRepository;
+	
+	@Value("${symbol:}")
 	String symbol = null;
 	
-	@Value("${platform}")
+	@Value("${platform:}")
 	String platform = null;
 	
 	@Value("${initDate:}")
@@ -36,40 +52,65 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	@Value("${noExchange:false}")
 	Boolean noExchange = false;
 	
-	Asset asset = null;
-
+	private boolean locked = true;
 	
-	@Override
-	@Transactional	
-	public synchronized void run(String... args) throws Exception {
-		
-		if (symbol != null) {
-			asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
+	
+	
+	@Transactional
+	public abstract List<Cotation> registerLastCotations() throws Exception;
 
-			if (canExchange()) {
-				registerLastCotations();
-			}
-			evaluateLastCotations();
+	@Transactional
+	public abstract void evaluateTradeForLastCotation() throws Exception;
+	
+	public abstract Double getFreeAssetQuantity(Asset asset);
+	
+	public abstract Trade sendOrder(Asset asset, OrderSide orderSide, Double quantity, Double price);
+	
+	protected abstract Trade updateTradeState(Asset asset, Trade trade);
+	
+	protected abstract List<Trade> addUnknownTrades(Asset asset);
+	
+	
+	public synchronized void init(String symbol, String platform, Boolean canExchange) throws Exception {
+		this.platform = platform;
+		this.symbol = symbol;
+		this.initDate = null;
+		this.noExchange = (canExchange == null || !canExchange);
+		initAndLock();
+	}
+	
+	
+	public synchronized void initAndLock() throws Exception {
+		if (symbol != null) {
+			locked = true;			
 		}
 	}
+	
+	
+	public void unlock() {
+		locked = false;
+	}
+	
+	protected boolean isLocked() {
+		return locked;
+	}
+	
 	
 	public boolean canExchange() {
 		return (this.noExchange == null || this.noExchange == false);
 	}
 	
-
-	public abstract List<Cotation> registerLastCotations() throws Exception;
-
-	public abstract void evaluateTradeForLastCotation() throws Exception;
 	
-	public abstract Trade sendOrder(OrderSide orderSide, Double quantity, Double price);
+	protected Asset getAsset() {
+		return assetRepository.findBySymbolAndPlatformEquals(symbol, platform);
+	}
 	
 	
-	@Transactional	
-	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")	
+	
+	@Transactional
+	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")
 	public synchronized Cotation evaluateLastCotations() throws Exception {
-
-		asset = cotationService.getCryptobotRepository().getAssetRepository().findBySymbolAndPlatformEquals(symbol, platform);
+		Asset asset = getAsset();
 		if (asset != null) {
 			Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
 			Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
@@ -80,9 +121,9 @@ public abstract class TradeService extends CommonService implements CommandLineR
 	
 	
 	@Transactional	
-	@Scheduled(cron = "00 07 * * * *")
-	@Scheduled(cron = "00 37 * * * *")
+	@Scheduled(cron = "0 7 * * * *")
 	public synchronized void checkAndResetLossForCotations() throws Exception {
+		Asset asset = getAsset();
 		cotationService.checkAndResetLossForCotations(asset);
 	}
 		
@@ -95,10 +136,176 @@ public abstract class TradeService extends CommonService implements CommandLineR
 		}
 		return null;
 	}
+	
+	
+	@Transactional
+	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")
+	public synchronized void updateTradesAndPosition() {		
+		Asset asset = getAsset();
+		List<Trade> pendingTradesForAsset = cryptobotRepository.getPendingTradesForAsset(asset);
+		if (pendingTradesForAsset != null) {
+			for (Trade trade : pendingTradesForAsset) {
+				try {
+					updateTradeState(asset, trade);
+				} catch (Exception e) {
+					getLogger().error(e.getMessage(), e);
+				}
+			}
+		}		
+		addUnknownTrades(asset);		
+		List<Trade> unsoldedTrades = updateUnsoldedTrades(asset);
+		Position position = updatePosition(asset, unsoldedTrades);
+		getLogger().info(position != null ? position.toString() : "");
+	}
+	
+	
+	@Transactional
+	@Scheduled(cron = "0 2 0 * * SUN")  // chaque dimanche à minuit 2 minutes 
+	public synchronized void resetEvaluations() {	
+		Asset asset = getAsset();
+		soldPosition(asset, null);
+		cotationService.resetEvaluationForAsset(asset, Period._48h);		
+	}
+	
+
+	private Position updatePosition(Asset asset, List<Trade> unsoldedTrades) {
+		Position position = asset.getPosition();
+		if (position == null) {
+			position = new Position().asset(asset).platform(platform).symbol(symbol);
+			positionRepository.save(position);
+		}
+		if (unsoldedTrades != null && unsoldedTrades.size() > 0) {
+			Double totalUnsoldQty = 0d;
+			Double avgPrice = 0d;
+			Double totalUnsoldAmount = 0d;
+			for (Trade trade : unsoldedTrades) {
+				if (trade.getOrderSideEnum() == OrderSide.BUY) {
+					Double soldedQty = trade.getSoldedQty() != null ? trade.getSoldedQty() : 0d;
+					Double price = trade.getPrice();
+					Double unsoldQty = (trade.getExecQty() != null ? trade.getExecQty() : trade.getQuantity()) - soldedQty;
+					totalUnsoldQty += unsoldQty;
+					totalUnsoldAmount += (price * unsoldQty);
+				}
+			}
+			avgPrice = totalUnsoldQty > 0 ? totalUnsoldAmount / totalUnsoldQty : 0d;
+			position.avgPrice(avgPrice).cost(totalUnsoldAmount).quantity(totalUnsoldQty);
+		} else {
+			position.avgPrice(0d).cost(0d).quantity(0d);
+		}
+		return position;
+	}
+	
+	
+	private List<Trade> updateUnsoldedTrades(Asset asset) {
+		List<Trade> unsoldedTrades = cryptobotRepository.getUnsoldedTradesForAsset(asset);
+		List<Trade> finalUnsoldedTrades = new ArrayList<Trade>();				
+		if (unsoldedTrades != null) {
+			for (int i = 0; i < unsoldedTrades.size(); i++) {
+				Trade curTrade = unsoldedTrades.get(i);
+				OrderSide side = curTrade.getOrderSideEnum();
+				Double sellSoldedQty = curTrade.getSoldedQty();
+				Double sellExecQty = curTrade.getExecQty();
+				if (side.equals(OrderSide.SELL) && i > 0 && sellExecQty != null && !sellExecQty.equals(sellSoldedQty)) {
+					if (sellSoldedQty == null) {
+						sellSoldedQty = 0d;
+					}
+					for (int j = i - 1; j >= 0; j--) {
+						Trade prevTrade = unsoldedTrades.get(j);
+						OrderSide prevSide = prevTrade.getOrderSideEnum();
+						Double buySoldedQty = prevTrade.getSoldedQty();
+						Double buyExecQty = prevTrade.getExecQty();
+						if (prevSide.equals(OrderSide.BUY) && buyExecQty != null && !buyExecQty.equals(buySoldedQty)) {
+							if (buySoldedQty == null) {
+								buySoldedQty = 0d;
+							}
+							double deltaSoldedQty = Math.min(sellExecQty - sellSoldedQty, buyExecQty - buySoldedQty);
+							sellSoldedQty += deltaSoldedQty;
+							curTrade.soldedQty(sellSoldedQty);
+							buySoldedQty += deltaSoldedQty;
+							prevTrade.soldedQty(buySoldedQty);
+							if (sellSoldedQty >= sellExecQty) {
+								break;
+							}
+						}						
+					}
+				}						
+			}
+			finalUnsoldedTrades.addAll(unsoldedTrades.stream().filter(trade -> trade.getSoldedQty() == null || trade.getSoldedQty().compareTo(trade.getExecQty()) < 0).toList());			
+		}
+		return finalUnsoldedTrades;
+	}
+	
+	
+	protected Trade soldPosition(Asset asset, Double quantity) {
+		// si on a l'actif en stock, on récupère son prix d'achat moyen et on place un ordre de vente limite au-dessus
+		if (quantity == null) {
+			quantity = getFreeAssetQuantity(asset);
+		}
+		if (asset != null && quantity > 0 && asset.getPosition() != null) {
+			Double avgCostPrice = asset.getPosition().getAvgPrice();
+			if (avgCostPrice != null && avgCostPrice > 0d) {				
+				Trade soldPositionTrade = sendOrder(asset, OrderSide.SELL, quantity, avgCostPrice * 1.01);
+				if (soldPositionTrade != null) {
+					getLogger().info("Position soldée pour " + asset.getSymbol() 
+						+ ": quantité vendue " + BigDecimal.valueOf(quantity).setScale(5, RoundingMode.HALF_EVEN)
+						+ ", prix " + BigDecimal.valueOf(avgCostPrice * 1.01).setScale(5, RoundingMode.HALF_EVEN)
+						+ ", montant " + BigDecimal.valueOf(avgCostPrice * 1.01 * quantity).setScale(2, RoundingMode.HALF_EVEN));
+					cryptobotRepository.saveTrade(soldPositionTrade);
+					return soldPositionTrade;
+				}
+			}
+		}
+		return null;
+	}
+	
+	
+	protected Double getDesiredAmountToBuy(Asset asset, Double avalaibleAmount) {
+		if (asset != null && avalaibleAmount != null && avalaibleAmount > 0d) {
+			List<Asset> allAssets = assetRepository.findAll();
+			return getDesiredAmountToBuy(asset, allAssets, avalaibleAmount);
+		}
+		return 0d;
+	}
+
+
+	private Double getDesiredAmountToBuy(Asset asset, List<Asset> allAssets, Double avalaibleAmount) {
+		Double desiredRatio = 0d, effectiveRatio = 0d, desiredAmount = 0d;		
+		if (asset != null && avalaibleAmount != null && avalaibleAmount > 0d) {	
+			BigDecimal realSum = BigDecimal.valueOf(avalaibleAmount);			
+			// ratio souhaité
+			Double confSum = allAssets.stream()
+				.map(Asset::getMaxInvest)
+				.reduce((invest0, invest1) -> invest0 + invest1)
+				.orElse(0d);
+			if (confSum > 0d) {
+				desiredRatio = new BigDecimal(asset.getMaxInvest() / confSum * 100).setScale(1, RoundingMode.HALF_EVEN).doubleValue();			
+			}
+			// montant total
+			Double totalInvest = allAssets.stream()
+				.map(Asset::getPosition)
+				.filter(position -> position != null && position.getCost() != null && position.getCost() > 0d)
+				.map(Position::getCost)
+				.reduce((cost0, cost1) -> cost0 + cost1)
+				.orElse(null);
+			
+			if (totalInvest != null) {
+				realSum = realSum.add(BigDecimal.valueOf(totalInvest));
+			}
+			// ratio réel
+			if (asset.getPosition() != null && asset.getPosition().getCost() != null && asset.getPosition().getCost() > 0d) {
+				Double cost = asset.getPosition().getCost();
+				effectiveRatio = cost / realSum.doubleValue() * 100;
+			}
+			// montant achat souhaité
+			if (effectiveRatio < desiredRatio) {
+				desiredAmount = Math.min(avalaibleAmount, (desiredRatio - effectiveRatio) * realSum.doubleValue() / 100);
+			}
+		}
+		return desiredAmount;
+	}
+
 
 	
-	
 
-	
 
 }

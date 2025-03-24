@@ -89,6 +89,10 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	public String getFlagBuy() {
 		return this.flagBuy;
 	}
+	
+	public Boolean isBuyFlag() {
+		return "B".equalsIgnoreCase(this.flagBuy) ;
+	}
 
 	public void setFlagBuy(String flagBuy) {
 		this.flagBuy = flagBuy;
@@ -100,6 +104,10 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 
 	public void setFlagSell(String flagSell) {
 		this.flagSell = flagSell;
+	}
+	
+	public Boolean isSellFlag() {
+		return "S".equalsIgnoreCase(this.flagSell) ;
 	}
 
 	public Double getMax12h() {

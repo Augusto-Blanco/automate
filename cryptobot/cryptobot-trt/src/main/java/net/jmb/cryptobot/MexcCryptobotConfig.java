@@ -29,8 +29,6 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import net.jmb.cryptobot.data.repository.CryptobotRepository;
-import net.jmb.cryptobot.service.MexcTradeService;
-import net.jmb.cryptobot.service.TradeService;
 
 @Configuration
 class MexcCryptobotConfig {	
@@ -60,15 +58,6 @@ class MexcCryptobotConfig {
 		String property = env.getProperty("secretKey");
 		return property;
 	}
-	
-	
-	@Bean TradeService tradeService() {
-		if ("MEXC".equalsIgnoreCase(env.getProperty("platform"))) {
-			return new MexcTradeService();
-		}
-		return null;
-	}
-	
 	
 	
 	@Bean

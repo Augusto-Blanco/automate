@@ -29,15 +29,15 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 	
 	
 	default Specification<AssetConfig> specDateGreaterOrEquals(String symbol, Date refDate) {		
-		Specification<AssetConfig> specif = (root, query, builder) -> {
-			Predicate predicate = builder.conjunction();	
+		Specification<AssetConfig> specif = (root, query, criteria) -> {
+			Predicate predicate = criteria.conjunction();	
 			if (refDate != null) {
-				Predicate startTimePredicate = builder.greaterThanOrEqualTo(root.get("endTime"), refDate);
-				predicate = builder.and(predicate, startTimePredicate);
+				Predicate endTimePredicate = criteria.greaterThanOrEqualTo(root.get("endTime"), refDate);
+				predicate = criteria.and(predicate, endTimePredicate);
 			}
 			if (symbol != null) {
-				Predicate symbolPredicate = builder.equal(root.get("symbol"), symbol);
-				predicate = builder.and(predicate, symbolPredicate);
+				Predicate symbolPredicate = criteria.equal(root.get("symbol"), symbol);
+				predicate = criteria.and(predicate, symbolPredicate);
 			}
 			return predicate;
 		};

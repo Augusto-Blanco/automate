@@ -15,6 +15,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -49,13 +50,14 @@ public class Asset extends AbstractEntity implements Serializable {
 	private String analysisPeriod;
 	private String frequency;	
 	private BigDecimal perf;
-	private Double gapFromTrend;
-
-	
+	private Double gapFromTrend;	
 	
 	@OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@JsonIgnore
 	private List<Trade> trades;
+	
+	@OneToOne(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	private Position position;
 	
 	
 
@@ -369,6 +371,21 @@ public class Asset extends AbstractEntity implements Serializable {
 	
 	public Asset maxPercentLoss(Double maxPercentLoss) {
 		this.maxPercentLoss = maxPercentLoss;
+		return this;
+	}
+
+
+	public Position getPosition() {
+		return position;
+	}
+
+
+	public void setPosition(Position position) {
+		this.position = position;
+	}
+	
+	public Asset position(Position position) {
+		this.position = position;
 		return this;
 	}
 	

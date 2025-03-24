@@ -107,6 +107,17 @@
 		</logger>
 		
 	</then>
+	
+	<else>		
+		<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+			<encoder>
+				<pattern>${pattern}</pattern>
+			</encoder>
+		</appender>
+		<root level="${root.level}">
+			<appender-ref ref="STDOUT" />
+		</root>
+	</else>
 </if>
 
 </configuration>

@@ -52,6 +52,17 @@ public class MexcAccountInfo {
 		return 0d;
 	}
 	
+	public Double getTotalAssetQuantity(String symbol) {
+		if (balances != null) {
+			return balances.stream()
+				.filter(asset -> symbol.equalsIgnoreCase(asset.getAsset()))
+				.map(asset -> asset.getFree() + asset.getLocked())
+				.findFirst()
+				.orElse(0d);
+		}
+		return 0d;
+	}
+	
 	@Override
 	public String toString() {
 		return "MexcAccountInfo [accountType=" + accountType + ", canTrade=" + canTrade + ", canWithdraw=" + canWithdraw

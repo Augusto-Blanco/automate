@@ -55,6 +55,19 @@ public class CotationService extends CommonService {
 	
 	
 	@Transactional
+	public Cotation resetEvaluationForAsset(Asset asset, Period period) {
+		if (period == null) {
+			period = Period._48h;
+		}
+		Cotation refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), period));
+		if (refCotation != null) {
+			return initEvaluationForCotations(asset, refCotation.getDatetime(), true);
+		}
+		return null;
+	}
+	
+	
+	@Transactional
 	public Cotation initEvaluationForCotations(Asset asset, Date dateRef, boolean reset) {
 		
 		Cotation cotation = null;
@@ -206,22 +219,18 @@ public class CotationService extends CommonService {
 			
 			Double lowLimit = asset.getVarLowLimit();
 			Double highLimit = asset.getVarHighLimit();
-			Double minStopLoss = asset.getStopLossStart() != null ? asset.getStopLossStart() : 0.5d;
-//			Double maxStopLoss = asset.getStopLossLimit().doubleValue();
-			
 			
 			BigDecimal amountB100 = null;
-			Double maxVarHigh = lowLimit, maxVarLow = lowLimit, stopLoss = minStopLoss;
-			Double bestVarHigh = null, bestVarLow = null, bestStopLoss = null;
+			Double maxVarHigh = lowLimit, maxVarLow = lowLimit;
+			Double bestVarHigh = null, bestVarLow = null;
 
-//			while (stopLoss <= maxStopLoss) {
+
 				while (maxVarHigh <= highLimit) {
 					while (maxVarLow <= highLimit) {
-						cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss);
+						cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow);
 						if (amountB100 == null || cotation.getAmountB100().compareTo(amountB100) > 0) {
 							bestVarHigh = maxVarHigh;
 							bestVarLow = maxVarLow;
-							bestStopLoss = stopLoss;
 							amountB100 = cotation.getAmountB100();
 						}
 						maxVarLow += 0.1d;
@@ -229,28 +238,24 @@ public class CotationService extends CommonService {
 					maxVarLow = lowLimit;
 					maxVarHigh += 0.1d;
 				}
-//				maxVarHigh = maxVarLow = lowLimit;
-//				stopLoss += 0.1d;
-//			}
+
 			// on compare à si on ne fait rien (variation 100% requise)
 			maxVarHigh = maxVarLow = 100d;
-			stopLoss = 0d;
-			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss);
+
+			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow);
 			if (amountB100 == null || cotation.getAmountB100().doubleValue() >= 0.999 * amountB100.doubleValue()) {
 				bestVarHigh = bestVarLow = 100d;
-				bestStopLoss = stopLoss;
 				amountB100 = cotation.getAmountB100();
 			}
 			
-			if (bestVarHigh != null && bestVarLow != null && bestStopLoss != null) {
-				cotation = evaluateTradesForCotations(cotationGrid, asset, bestVarHigh, bestVarLow, bestStopLoss);
+			if (bestVarHigh != null && bestVarLow != null) {
+				cotation = evaluateTradesForCotations(cotationGrid, asset, bestVarHigh, bestVarLow);
 				assetConfig = new AssetConfig()
 					.symbol(cotation.getSymbol())
 					.startTime(cotationGrid.get(0).getDatetime())
 					.endTime(cotation.getDatetime())
 					.maxVarHigh(BigDecimal.valueOf(bestVarHigh).setScale(2, RoundingMode.HALF_EVEN))
-					.maxVarLow(BigDecimal.valueOf(bestVarLow).setScale(2, RoundingMode.HALF_EVEN))
-					.stopLoss(BigDecimal.valueOf(bestStopLoss).setScale(2, RoundingMode.HALF_EVEN));
+					.maxVarLow(BigDecimal.valueOf(bestVarLow).setScale(2, RoundingMode.HALF_EVEN));
 			}
 		}
 		return assetConfig;
@@ -261,27 +266,24 @@ public class CotationService extends CommonService {
 		
 		Cotation cotation = null;
 		if (assetConfig != null) {
-			Double maxVarHigh = assetConfig.getMaxVarHigh() != null ? assetConfig.getMaxVarHigh().doubleValue() : 1000d;
-			Double maxVarLow = assetConfig.getMaxVarLow() != null ? assetConfig.getMaxVarLow().doubleValue() : 1000d;
-			Double stopLoss = assetConfig.getStopLoss() != null ? assetConfig.getStopLoss().doubleValue() : 1000d;
-			if (asset.getMaxPercentLoss() != null) {
-				if (asset.getMaxPercentLoss() < stopLoss || stopLoss == 0d) {
-					stopLoss = asset.getMaxPercentLoss() / 2;
-				}				
-			}
-
-			getLogger().info(assetConfig.toString());
-
-			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss, assetConfig.isRealEval());
+			Double maxVarHigh = assetConfig.getMaxVarHigh() != null ? assetConfig.getMaxVarHigh().doubleValue() : 100d;
+			Double maxVarLow = assetConfig.getMaxVarLow() != null ? assetConfig.getMaxVarLow().doubleValue() : 1d;
+			Double stopLoss = maxVarHigh >= maxVarLow ? asset.getStopLossLimit() : asset.getStopLossStart();
 			
+			assetConfig.stopLoss(stopLoss != null ? BigDecimal.valueOf(stopLoss) : null);			
+			if (assetConfig.isRealEval()) {
+				getLogger().info(assetConfig.toString());
+			}
+			cotation = evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss, assetConfig.isRealEval());			
 			cotationGrid.forEach( cot -> getLogger().info(cot.toString()) );			
 			getLogger().info("");
 		}		
 		return cotation;
 	}
 	
-	public Cotation evaluateTradesForCotations(List<Cotation> cotationGrid, Asset asset, Double maxVarHigh, Double maxVarLow, Double stopLoss) {
-		return evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, stopLoss, false);
+	
+	public Cotation evaluateTradesForCotations(List<Cotation> cotationGrid, Asset asset, Double maxVarHigh, Double maxVarLow) {
+		return evaluateTradesForCotations(cotationGrid, asset, maxVarHigh, maxVarLow, null, false);
 	}
 	
 	
@@ -290,6 +292,10 @@ public class CotationService extends CommonService {
 		Cotation cotation = null;
 		
 		if (cotationGrid != null && asset != null) {
+			
+			if (stopLoss == null) {
+				stopLoss = 100d;
+			}
 			
 			double fees = (asset.getFeesRate() != null) ? asset.getFeesRate().doubleValue() / 100 : 0.005d;
 			Double maxPercentLoss = (asset.getMaxPercentLoss() != null ? asset.getMaxPercentLoss() : 5);
@@ -384,9 +390,10 @@ public class CotationService extends CommonService {
 						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
 						amountB100 = quantity * cotation.getPrice();
 						
-						boolean positiveSellCondition = deltaFromBestBuy >= maxVarHigh;
+						boolean positiveSellCondition = deltaPrice >= 0.5 * maxVarHigh && deltaFromBestBuy >= maxVarHigh ;
 						if (realEval) {
-							positiveSellCondition = (deltaFromBestBuy >= maxVarHigh || stopTrading && deltaPrice > 0d && deltaFromBestBuy >= asset.getVarLowLimit());
+							positiveSellCondition |= deltaPrice >= 0.5 * maxVarHigh && deltaFromBestBuy >= 0.95 * maxVarHigh && !positiveVar5m 
+									|| deltaPrice > 0d && stopTrading && deltaFromBestBuy >= asset.getVarLowLimit();
 						}
 						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);						
 						
@@ -507,13 +514,13 @@ public class CotationService extends CommonService {
 		boolean trendOK = true;
 		if (realEval && OrderSide.SELL.equals(cotation.getCurrentOrderSide())) {
 			Double gapFromTrend = asset.getGapFromTrend();
-			if (gapFromTrend != null && gapFromTrend > 0) {
+			if (gapFromTrend != null && gapFromTrend >= 0) {
 				Double prevBestBuyPrice = cotation.getPrevBestBuyPrice();
 				if (prevBestBuyPrice != null && cotation.getBestBuyPrice() != null) {
 					Double actualBestBuyPrice = cotation.getBestBuyPrice();
 					Double trend = (actualBestBuyPrice - prevBestBuyPrice) / prevBestBuyPrice;
 					Double estimatedBuyPrice;
-					if (trend > 0) {
+					if (trend > 0 || cotation.getVar12h().floatValue() < 0) {
 						estimatedBuyPrice = actualBestBuyPrice * (1 + trend);
 					} else {
 						estimatedBuyPrice = actualBestBuyPrice;
@@ -522,15 +529,12 @@ public class CotationService extends CommonService {
 					Double gapBetweenPrices = (price - estimatedBuyPrice) / estimatedBuyPrice * 100;
 					if (gapBetweenPrices > gapFromTrend) {
 						trendOK = false;
-						if (realEval) {
-							String message = "-- Trend KO pour " + cotation.getSymbol() + " à " + cotation.getDatetime();
-							getLogger().info(message);
-							message	= " -- trend: " + trend * 100 + "%" + " -- estimated buy price: " + estimatedBuyPrice
-									+ " -- actual price: " + price + " -- gap: " + gapBetweenPrices;
-							getLogger().info(message);
-							getLogger().info("");
-						}						
-					} else if (realEval) {
+						String message = "-- Trend KO pour " + cotation.getSymbol() + " à " + cotation.getDatetime();
+						getLogger().info(message);
+						message	= " -- trend: " + trend * 100 + "%" + " -- estimated buy price: " + estimatedBuyPrice
+								+ " -- actual price: " + price + " -- gap: " + gapBetweenPrices;
+						getLogger().info(message);						
+					} else {
 						String message = "-- Trend OK pour " + cotation.getSymbol() + " à " + cotation.getDatetime();
 						getLogger().info(message);
 						message	= " -- estimated buy price: " + estimatedBuyPrice + " -- actual price: " + price;
@@ -761,7 +765,7 @@ public class CotationService extends CommonService {
 
 	
 	
-	List<Cotation>  getCotationGridOnPeriodBackward(Cotation refCotation, List<Cotation> allCotations, Period period) {
+	private List<Cotation>  getCotationGridOnPeriodBackward(Cotation refCotation, List<Cotation> allCotations, Period period) {
 		int startIndex = 0;
 		Collections.sort(allCotations);
 		int endIndex = allCotations.indexOf(refCotation);
@@ -781,7 +785,7 @@ public class CotationService extends CommonService {
 		return subList;	
 	}
 	
-	List<Cotation> getCotationGridOnPeriodForward(Cotation refCotation, List<Cotation> allCotations, Period period) {
+	private List<Cotation> getCotationGridOnPeriodForward(Cotation refCotation, List<Cotation> allCotations, Period period) {
 		int endIndex = -1;
 		Collections.sort(allCotations);
 		int startIndex = allCotations.indexOf(refCotation);
@@ -797,7 +801,7 @@ public class CotationService extends CommonService {
 		return null;
 	}
 	
-	int findIndexForPeriodBackward(Cotation refCotation, List<Cotation> allCotations, Period period) {
+	private int findIndexForPeriodBackward(Cotation refCotation, List<Cotation> allCotations, Period period) {
 		int index = 0;
 		Collections.sort(allCotations);
 		int endIndex = allCotations.indexOf(refCotation);
@@ -814,22 +818,9 @@ public class CotationService extends CommonService {
 		}
 		return index;	
 	}
-	
-	int findIndexForPeriodForward(Cotation refCotation, List<Cotation> allCotations, Period period) {
-		int index = -1;
-		Collections.sort(allCotations);
-		int startIndex = allCotations.indexOf(refCotation);
-		if (startIndex >= 0) {
 
-			Date nextDate = PeriodUtil.nextDateForPeriod(refCotation.getDatetime(), period);
-			if (nextDate != null) {
-				index = findIndexForDate(allCotations, nextDate, refCotation.getSymbol());
-			}
-		}
-		return index;	
-	}
 	
-	int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
+	private int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
 		int index = -1;
 		if (refDate != null && cotations != null && symbol != null) {
 			for (int i = 0; i < cotations.size(); i++) {

@@ -6,10 +6,16 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.stereotype.Component;
+
+import net.jmb.cryptobot.service.TradeService;
 
 @SpringBootApplication
 @EnableScheduling
@@ -17,7 +23,9 @@ public class CryptoBatchApp {
 	
 	static Logger logger = LoggerFactory.getLogger(CryptoBatchApp.class);
 	
-
+	
+	@Value("${noExchange:false}")
+	Boolean noExchange = false;
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -25,8 +33,28 @@ public class CryptoBatchApp {
 		if (getParameters(args).get("daemon") == null) {
 			ctx.close();			
 		}
+	}	
+	
+	
+	@Component
+	public class TradeRunner implements CommandLineRunner {
+			
+		@Autowired
+		TradeService mexcTradeService;
+		
+		@Override
+		public void run(String... args) throws Exception {		
+			mexcTradeService.initAndLock();		
+			if (mexcTradeService.canExchange()) {
+				mexcTradeService.registerLastCotations();
+			}
+			mexcTradeService.evaluateLastCotations();	
+			mexcTradeService.unlock();
+		}
+		
 	}
-
+	
+	
 	
 	public static Map<String, String> getParameters(String...args) {
 		

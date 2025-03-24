@@ -4,13 +4,16 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.codec.digest.HmacAlgorithms;
 import org.apache.commons.codec.digest.HmacUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -46,27 +49,20 @@ public class MexcRestClientService extends CommonService {
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })	
 	@Transactional	
-	public List<Cotation> updateCotationsPrice(String symbol) throws Exception {		
-		
-		if (symbol != null && mexcRestTemplate != null) {
-			
+	public List<Cotation> updateCotationsPrice(String symbol) throws Exception {
+		if (symbol != null && mexcRestTemplate != null) {			
 			String url = BASE_URL + "/klines";
 			HttpMethod httpMethod = HttpMethod.GET;
-			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
-			
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();			
 			queryParams.add("symbol", symbol.concat("USDT"));
-			queryParams.add("interval", "5m");
-			
-			List<Cotation> newCotations = new ArrayList<Cotation>();
-			
+			queryParams.add("interval", "5m");			
+			List<Cotation> newCotations = new ArrayList<Cotation>();			
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
 				ResponseEntity<ArrayList> result = mexcRestTemplate.exchange(request, ArrayList.class);
-				ArrayList<List<Object>> resultList = (ArrayList<List<Object>>) result.getBody();
-				
+				ArrayList<List<Object>> resultList = result.getBody();				
 				if (resultList != null) {
-					symbol = symbol.replaceAll("USD.", "");
-					
+					symbol = symbol.replaceAll("USD.", "");					
 					for (List<Object> list : resultList) {
 						Long resultTime = (Long) list.get(0);				
 						Date datetime = new Date(Long.valueOf(resultTime));
@@ -76,32 +72,24 @@ public class MexcRestClientService extends CommonService {
 						newCotations.add(cotation);					
 					}					
 					newCotations = cotationService.registerNewCotations(symbol, newCotations);
-				}
-				
-				return newCotations;
-				
+				}				
+				return newCotations;				
 			} catch (Exception e) {
 				getLogger().error(e.getMessage(), e);
 			}
-		}
-		
+		}		
 		return null;
 	}
 	
 	
 	@SuppressWarnings({"rawtypes", "unchecked", "serial"})
-	public Double getLastPrice(String symbol) {		
-
-		if (mexcRestTemplate != null && symbol != null) {
-			
+	public Double getLastPrice(String symbol) {
+		if (mexcRestTemplate != null && symbol != null) {			
 			String url = BASE_URL + "/ticker/price";
 			HttpMethod httpMethod = HttpMethod.GET;
-			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {
-				{
-					add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));				
-				}
-			};
-			
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {{
+				add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));				
+			}};			
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
 				ResponseEntity<? extends Map> response = mexcRestTemplate.exchange(request, Map.class);
@@ -109,43 +97,24 @@ public class MexcRestClientService extends CommonService {
 				Object result = accountInfo.get("price");
 				if (result != null) {
 					return Double.valueOf(result.toString());
-				}
-				
+				}				
 			} catch (Exception e) {
 				getLogger().error(e.getMessage(), e);
 			}
 		}
-		return null;
-		
-	}
-	
-	public Double getFreeQuantity(String symbol) {
-		
-		if (symbol != null) {			
-			if (!symbol.startsWith("USD")) {
-				symbol = symbol.replaceAll("USD.", "");
-			}
-
-			MexcAccountInfo accountInfos = getAccountInfos();
-			return accountInfos.getFreeAssetQuantity(symbol);
-		}
-		
 		return null;		
 	}
 	
 	
-	private MexcAccountInfo getAccountInfos() {
+	public MexcAccountInfo getAccountInfos() {
 		String url = BASE_URL + "/account";
-		HttpMethod httpMethod = HttpMethod.GET;
-		
-		if (mexcRestTemplate != null) {
-			
+		HttpMethod httpMethod = HttpMethod.GET;		
+		if (mexcRestTemplate != null) {			
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, null);
 				ResponseEntity<MexcAccountInfo> result = mexcRestTemplate.exchange(request, MexcAccountInfo.class);
 				MexcAccountInfo accountInfo = result.getBody();
-				return accountInfo;
-				
+				return accountInfo;				
 			} catch (Exception e) {
 				getLogger().error(e.getMessage(), e);
 			}
@@ -153,29 +122,24 @@ public class MexcRestClientService extends CommonService {
 		return null;		
 	}
 	
+	
 	@SuppressWarnings("serial")
 	public MexcOrder sendOrder(String symbol, OrderSide orderSide, BigDecimal quantity, BigDecimal price) {
-
-		if (mexcRestTemplate != null && symbol != null) {
-			
+		if (mexcRestTemplate != null && symbol != null) {			
 			String url = BASE_URL + "/order";
 			HttpMethod httpMethod = HttpMethod.POST;
-			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {
-				{
-					add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
-					add("side", orderSide.name());
-					add("type", "LIMIT");
-					add("quantity", "" + quantity.toPlainString());
-					add("price", "" + price.toPlainString());
-				}
-			};
-
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {{
+				add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+				add("side", orderSide.name());
+				add("type", "LIMIT");
+				add("quantity", "" + quantity.toPlainString());
+				add("price", "" + price.toPlainString());
+			}};
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
 				ResponseEntity<MexcOrder> result = mexcRestTemplate.exchange(request, MexcOrder.class);
 				MexcOrder order = result.getBody();
 				return order;
-
 			} catch (Exception e) {
 				getLogger().error(e.getMessage(), e);
 			}
@@ -185,26 +149,18 @@ public class MexcRestClientService extends CommonService {
 	
 
 	
-	@SuppressWarnings("serial")
 	public MexcOrder requestOrder(String symbol, String orderId) {
-
-		if (mexcRestTemplate != null && orderId != null) {
-			
+		if (mexcRestTemplate != null && orderId != null) {			
 			String url = BASE_URL + "/order";
 			HttpMethod httpMethod = HttpMethod.GET;
-			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {
-				{
-					add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
-					add("orderId", orderId);
-				}
-			};
-
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
+			queryParams.add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+			queryParams.add("orderId", orderId);
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
 				ResponseEntity<MexcOrder> result = mexcRestTemplate.exchange(request, MexcOrder.class);
 				MexcOrder order = result.getBody();
 				return order;
-
 			} catch (Exception e) {
 				getLogger().error(e.getMessage(), e);
 			}
@@ -213,40 +169,77 @@ public class MexcRestClientService extends CommonService {
 	}
 	
 	
-	protected RequestEntity<?> buildRequest(String url, HttpMethod httpMethod, LinkedMultiValueMap<String, String> queryParams) throws URISyntaxException {
-		
-		RequestEntity<?> requestEntity = null;
-		
+	
+	public List<MexcOrder> allOrders(String symbol, Date startDate) {
+		if (mexcRestTemplate != null && symbol != null) {						
+			String url = BASE_URL + "/allOrders";
+			HttpMethod httpMethod = HttpMethod.GET;			
+			if (startDate == null) {
+				GregorianCalendar calendar = new GregorianCalendar();
+				calendar.add(Calendar.DAY_OF_YEAR, -6);
+				startDate = calendar.getTime();
+			}
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
+			queryParams.add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+			queryParams.add("startTime", String.valueOf(startDate.getTime()));
+			try {
+				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
+				ResponseEntity<List<MexcOrder>> result = mexcRestTemplate.exchange(request, new ParameterizedTypeReference<List<MexcOrder>>() {});
+				List<MexcOrder> allOrders = result.getBody();
+				return allOrders;
+			} catch (Exception e) {
+				getLogger().error(e.getMessage(), e);
+			}
+		}
+		return null;
+	}
+
+
+	public List<MexcOrder> openOrders(String symbol) {
+		if (mexcRestTemplate != null && symbol != null) {			
+			String url = BASE_URL + "/openOrders";
+			HttpMethod httpMethod = HttpMethod.GET;
+			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
+			queryParams.add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+			try {
+				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
+				ResponseEntity<List<MexcOrder>> result = mexcRestTemplate.exchange(request, new ParameterizedTypeReference<List<MexcOrder>>() {});
+				List<MexcOrder> openOrders = result.getBody();
+				return openOrders;
+			} catch (Exception e) {
+				getLogger().error(e.getMessage(), e);
+			}
+		}
+		return null;
+	}
+
+	
+	
+	protected RequestEntity<?> buildRequest(String url, HttpMethod httpMethod, LinkedMultiValueMap<String, String> queryParams) throws URISyntaxException {		
+		RequestEntity<?> requestEntity = null;		
 		HttpHeaders headers = new HttpHeaders();
 		//	application/x-www-form-urlencoded
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		
+		headers.setContentType(MediaType.APPLICATION_JSON);		
 		if (apiKey != null) {
 			headers.add(API_KEY_HEADER, apiKey);				
-		}
-		
+		}		
 		if (queryParams == null) {
 			queryParams = new LinkedMultiValueMap<String, String>();
-		}
-		
+		}		
 		queryParams.add("timestamp", "" + (new Date().getTime() - 3000));
-		queryParams.add("recvWindow", "20000");
-		
+		queryParams.add("recvWindow", "20000");		
 		String queryString = UriComponentsBuilder.newInstance()
 			.queryParams(queryParams)
 	        .encode()
 	        .toUriString()
-	        .replace("?", "");
-	
+	        .replace("?", "");	
 		if (secretKey != null) {
 			String signature = new HmacUtils(HmacAlgorithms.HMAC_SHA_256, secretKey).hmacHex(queryString);
 			queryParams.add("signature", signature);
 			queryString += "&signature=" + signature;
-		}
-		
+		}		
 		String urlTemplate = UriComponentsBuilder.fromHttpUrl(url).query(queryString).encode().toUriString();
 		requestEntity = RequestEntity.method(httpMethod, URI.create(urlTemplate)).headers(headers).body(queryParams);
-
 		return requestEntity;
 	}
 	
