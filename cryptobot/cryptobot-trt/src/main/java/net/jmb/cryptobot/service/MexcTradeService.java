@@ -69,7 +69,7 @@ public class MexcTradeService extends TradeService {
 							if (cotation.isBuyFlag()) {												
 								Double freeAmount = getFreeQuantity("USDT", accountInfos);
 								Double maxInvest = getDesiredAmountToBuy(asset, freeAmount);
-								Double lastPrice = restClientService.getLastPrice(symbol);
+								Double lastPrice = getLastPrice(asset);
 								if (maxInvest > 1d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
 									// si on a déjà l'actif en stock on récupère son prix d'achat moyen et on place un ordre de vente limite au-dessus
 									soldPosition(asset, freeQuantity);				
@@ -82,7 +82,7 @@ public class MexcTradeService extends TradeService {
 									}
 								}
 							} else if (cotation.isSellFlag()) {								
-								Double lastPrice = restClientService.getLastPrice(symbol);
+								Double lastPrice = getLastPrice(asset);
 								if (lastPrice > 0d && freeQuantity > 0d) {
 									trade = sendOrder(asset, OrderSide.SELL, freeQuantity, lastPrice);
 								}
@@ -237,6 +237,13 @@ public class MexcTradeService extends TradeService {
 			getLogger().error(e.getMessage(), e);
 		}
 		return null;
+	}
+
+
+	@Override
+	public Double getLastPrice(Asset asset) {
+		Double lastPrice = restClientService.getLastPrice(asset.getSymbol());
+		return lastPrice;
 	}
 	
 	

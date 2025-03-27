@@ -15,7 +15,7 @@ import net.jmb.cryptobot.data.entity.Trade;
 public interface TradeRepository extends JpaRepository<Trade, Long>, JpaSpecificationExecutor<Trade> {
 
 
-	List<Trade> findByAssetIdAndStateIn(Long id, List<String> states);
+	List<Trade> findByAssetIdAndStateInOrderByTime(Long id, List<String> states);
 	
 	
 	@Query(

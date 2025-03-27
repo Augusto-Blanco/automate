@@ -64,6 +64,8 @@ public abstract class TradeService extends CommonService {
 	
 	public abstract Double getFreeAssetQuantity(Asset asset);
 	
+	public abstract Double getLastPrice(Asset asset);
+	
 	public abstract Trade sendOrder(Asset asset, OrderSide orderSide, Double quantity, Double price);
 	
 	protected abstract Trade updateTradeState(Asset asset, Trade trade);
@@ -141,20 +143,68 @@ public abstract class TradeService extends CommonService {
 	@Transactional
 	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")
 	public synchronized void updateTradesAndPosition() {		
+		
 		Asset asset = getAsset();
+		
+		Position position = asset.getPosition();
+		if (position == null) {
+			position = new Position().asset(asset).platform(platform).symbol(symbol);
+			positionRepository.save(position);
+		}
+		Date firstTrade = position.getFirstTrade();
+		Date lastTrade = position.getLastTrade();
+		Double totalBuy = position.getTotalBuy() != null ? position.getTotalBuy() : 0d;
+		Double totalSell = position.getTotalSell() != null ? position.getTotalSell() : 0d;		
+		
+		// mise à jour des ordres ordres ouverts (non encore exécutés) et de la position résultante
 		List<Trade> pendingTradesForAsset = cryptobotRepository.getPendingTradesForAsset(asset);
 		if (pendingTradesForAsset != null) {
 			for (Trade trade : pendingTradesForAsset) {
+				OrderSide orderSide = trade.getOrderSideEnum();
+				Double execAmount = trade.getExecAmount() != null ? trade.getExecAmount() : 0d;
+				if (firstTrade == null || firstTrade.after(trade.getTime())) {
+					firstTrade = trade.getTime();
+				}
+				if (lastTrade == null || lastTrade.before(trade.getTime())) {
+					lastTrade = trade.getTime();
+				}
 				try {
-					updateTradeState(asset, trade);
+					Trade updatedTrade = updateTradeState(asset, trade);
+					Double newExecAmount = updatedTrade.getExecAmount() != null ? updatedTrade.getExecAmount() : 0d;
+					switch (orderSide) {
+						case BUY -> totalBuy += (newExecAmount - execAmount);
+						case SELL -> totalSell += (newExecAmount - execAmount);
+					}
 				} catch (Exception e) {
 					getLogger().error(e.getMessage(), e);
 				}
 			}
 		}		
-		addUnknownTrades(asset);		
+		// intégration des ordres passés en dehors de l'appli et màj de la position résultante
+		List<Trade> unknownTrades = addUnknownTrades(asset);
+		if (unknownTrades != null && unknownTrades.size() > 0) {
+			for (Trade trade : unknownTrades) {
+				OrderSide orderSide = trade.getOrderSideEnum();
+				Double execAmount = trade.getExecAmount() != null ? trade.getExecAmount() : 0d;
+				if (firstTrade == null || firstTrade.after(trade.getTime())) {
+					firstTrade = trade.getTime();
+				}
+				if (lastTrade == null || lastTrade.before(trade.getTime())) {
+					lastTrade = trade.getTime();
+				}
+				switch (orderSide) {
+					case BUY -> totalBuy += execAmount;
+					case SELL -> totalSell += execAmount;
+				}
+			}
+		}
+		
+		// mise à jour des soldes Achat / Vente et màj de la position correspondante
 		List<Trade> unsoldedTrades = updateUnsoldedTrades(asset);
-		Position position = updatePosition(asset, unsoldedTrades);
+		position = updateUnsoldedTradesPosition(position, unsoldedTrades);
+
+		Double perf = position.getTotalSell() - position.getTotalBuy() + position.getValue();
+		position.totalBuy(totalBuy).totalSell(totalSell).perf(perf).firstTrade(firstTrade).lastTrade(lastTrade);
 		getLogger().info(position != null ? position.toString() : "");
 	}
 	
@@ -168,16 +218,9 @@ public abstract class TradeService extends CommonService {
 	}
 	
 
-	private Position updatePosition(Asset asset, List<Trade> unsoldedTrades) {
-		Position position = asset.getPosition();
-		if (position == null) {
-			position = new Position().asset(asset).platform(platform).symbol(symbol);
-			positionRepository.save(position);
-		}
+	private Position updateUnsoldedTradesPosition(Position position, List<Trade> unsoldedTrades) {
 		if (unsoldedTrades != null && unsoldedTrades.size() > 0) {
-			Double totalUnsoldQty = 0d;
-			Double avgPrice = 0d;
-			Double totalUnsoldAmount = 0d;
+			Double totalUnsoldQty = 0d, avgPrice = 0d, totalUnsoldAmount = 0d, value = 0d;
 			for (Trade trade : unsoldedTrades) {
 				if (trade.getOrderSideEnum() == OrderSide.BUY) {
 					Double soldedQty = trade.getSoldedQty() != null ? trade.getSoldedQty() : 0d;
@@ -188,9 +231,10 @@ public abstract class TradeService extends CommonService {
 				}
 			}
 			avgPrice = totalUnsoldQty > 0 ? totalUnsoldAmount / totalUnsoldQty : 0d;
-			position.avgPrice(avgPrice).cost(totalUnsoldAmount).quantity(totalUnsoldQty);
+			value = totalUnsoldQty * getLastPrice(position.getAsset());
+			position.avgPrice(avgPrice).cost(totalUnsoldAmount).quantity(totalUnsoldQty).value(value);
 		} else {
-			position.avgPrice(0d).cost(0d).quantity(0d);
+			position.avgPrice(0d).cost(0d).quantity(0d).value(0d);
 		}
 		return position;
 	}

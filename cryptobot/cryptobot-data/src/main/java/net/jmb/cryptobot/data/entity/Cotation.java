@@ -57,6 +57,7 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	private Double buyPrice;
 	private Double bestBuyPrice;
 	private Double prevBestBuyPrice;
+	private Double antePrevBestBuy;
 	private String flagSell;
 	private Double sellPrice;
 	private Double bestSellPrice;
@@ -715,6 +716,19 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 		}
 
 
+		public Double getAntePrevBestBuy() {
+			return antePrevBestBuy;
+		}
+
+
+		public void setAntePrevBestBuy(Double antePrevBestBuy) {
+			this.antePrevBestBuy = antePrevBestBuy;
+		}
+
+		public Cotation antePrevBestBuy(Double antePrevBestBuy) {
+			this.antePrevBestBuy = antePrevBestBuy;
+			return this;
+		}
 
 
 		

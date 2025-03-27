@@ -302,8 +302,8 @@ public class CotationService extends CommonService {
 			
 			Integer nbLoss = null;
 			Boolean stopTrading = null, canResetBestSellPrice = null, canResetBestBuyPrice = null;			
-			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, prevBestBuyPrice = null, buyPrice = null, 
-					quantity = null, amountB100 = null, percentLoss = null;
+			Double bestSellPrice = null, sellPrice = null, bestBuyPrice = null, prevBestBuyPrice = null, antePrevBestBuy = null, 
+					buyPrice = null, quantity = null, amountB100 = null, percentLoss = null;
 			OrderSide currentSide = null;
 	
 			
@@ -353,6 +353,9 @@ public class CotationService extends CommonService {
 				if (prevBestBuyPrice == null) {
 					prevBestBuyPrice = cotation.getPrevBestBuyPrice();
 				}
+				if (antePrevBestBuy == null) {
+					antePrevBestBuy = cotation.getAntePrevBestBuy();
+				}
 				if (bestSellPrice == null) {
 					bestSellPrice = cotation.getBestSellPrice();
 				}
@@ -377,8 +380,8 @@ public class CotationService extends CommonService {
 				if (i > 0) {
 					
 					cotation.nbLoss(nbLoss).percentLoss(percentLoss).canResetBestSellPrice(canResetBestSellPrice).canResetBestBuyPrice(canResetBestBuyPrice).currentSide(currentSide)
-							.sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).quantity(quantity)
-							.amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
+							.sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).antePrevBestBuy(antePrevBestBuy)
+							.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));
 					
 					Double deltaFromBestBuy = (cotation.getPrice() - bestBuyPrice) / bestBuyPrice * 100;
 					Double deltaFromBestSell = (bestSellPrice != null && bestSellPrice > 0d) ? ((cotation.getPrice() - bestSellPrice) / bestSellPrice * 100) : 0d;
@@ -390,10 +393,12 @@ public class CotationService extends CommonService {
 						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
 						amountB100 = quantity * cotation.getPrice();
 						
-						boolean positiveSellCondition = deltaPrice >= 0.5 * maxVarHigh && deltaFromBestBuy >= maxVarHigh ;
+						boolean positiveDeltaPrice = deltaPrice >= 0.5 * asset.getVarLowLimit();
+						boolean positiveSellCondition = positiveDeltaPrice && deltaFromBestBuy >= maxVarHigh ;
 						if (realEval) {
-							positiveSellCondition |= deltaPrice >= 0.5 * maxVarHigh && deltaFromBestBuy >= 0.95 * maxVarHigh && !positiveVar5m 
-									|| deltaPrice > 0d && stopTrading && deltaFromBestBuy >= asset.getVarLowLimit();
+							positiveSellCondition |= positiveDeltaPrice && (
+								deltaFromBestBuy >= 0.95 * maxVarHigh && !positiveVar5m || stopTrading && deltaFromBestBuy >= asset.getVarLowLimit()
+							);
 						}
 						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);						
 						
@@ -454,6 +459,7 @@ public class CotationService extends CommonService {
 								currentSide = OrderSide.BUY;
 								buyPrice = cotation.getPrice();
 								if (cotation.getPrice() < bestBuyPrice || Boolean.TRUE.equals(canResetBestBuyPrice)) { 
+									antePrevBestBuy = prevBestBuyPrice;
 									prevBestBuyPrice = bestBuyPrice;
 									bestBuyPrice = cotation.getPrice();
 									isResetBuy = true;
@@ -484,6 +490,7 @@ public class CotationService extends CommonService {
 						canResetBestSellPrice = true;
 					} else if (realEval && Boolean.TRUE.equals(canResetBestBuyPrice) && deltaFromBestSell <= -maxVarLow) {
 						isResetBuy = true;
+						antePrevBestBuy = cotation.getPrevBestBuyPrice();
 						prevBestBuyPrice = cotation.getBestBuyPrice();
 						bestBuyPrice = cotation.getPrice();
 						canResetBestBuyPrice = false;
@@ -499,8 +506,8 @@ public class CotationService extends CommonService {
 					}
 
 					cotation.nbLoss(nbLoss).percentLoss(percentLoss).canResetBestSellPrice(canResetBestSellPrice).canResetBestBuyPrice(canResetBestBuyPrice).currentSide(currentSide)
-							.sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).quantity(quantity)
-							.amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));	
+							.sellPrice(sellPrice).buyPrice(buyPrice).bestBuyPrice(bestBuyPrice).bestSellPrice(bestSellPrice).prevBestBuyPrice(prevBestBuyPrice).antePrevBestBuy(antePrevBestBuy)
+							.quantity(quantity).amountB100(BigDecimal.valueOf(amountB100).setScale(2, RoundingMode.HALF_EVEN));	
 				
 				}
 			}
@@ -518,7 +525,14 @@ public class CotationService extends CommonService {
 				Double prevBestBuyPrice = cotation.getPrevBestBuyPrice();
 				if (prevBestBuyPrice != null && cotation.getBestBuyPrice() != null) {
 					Double actualBestBuyPrice = cotation.getBestBuyPrice();
+					Double antePrevBestBuy = cotation.getAntePrevBestBuy();
 					Double trend = (actualBestBuyPrice - prevBestBuyPrice) / prevBestBuyPrice;
+					if (antePrevBestBuy != null && antePrevBestBuy > 0d) {
+						Double test = (prevBestBuyPrice - antePrevBestBuy) / antePrevBestBuy;
+						if (trend < test && test < 0d) {
+							trend = test;
+						}
+					}
 					Double estimatedBuyPrice;
 					if (trend > 0 || cotation.getVar12h().floatValue() < 0) {
 						estimatedBuyPrice = actualBestBuyPrice * (1 + trend);

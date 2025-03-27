@@ -1,6 +1,7 @@
 package net.jmb.cryptobot.data.entity;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -10,6 +11,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 /**
  * The persistent class for the integration_contrat database table.
@@ -32,7 +35,13 @@ public class Position extends AbstractEntity implements Serializable {
 	private Double totalBuy;
 	private Double totalSell;
 	private Double perf;
-	private Long closedTrade;
+	private Double value;
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date firstTrade;
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date lastTrade;
+	
+	
 
 	// bi-directional association to Asset
 	@OneToOne(cascade = CascadeType.MERGE)
@@ -142,15 +151,7 @@ public class Position extends AbstractEntity implements Serializable {
 		this.perf = perf;
 	}
 
-	public Long getClosedTrade() {
-		return closedTrade;
-	}
-
-	public void setClosedTrade(Long closedTrade) {
-		this.closedTrade = closedTrade;
-	}
-
-
+	
 	public Position avgPrice(Double avgPrice) {
 		this.avgPrice = avgPrice;
 		return this;
@@ -176,16 +177,56 @@ public class Position extends AbstractEntity implements Serializable {
 		return this;
 	}
 
-	public Position closedTrade(Long closedTrade) {
-		this.closedTrade = closedTrade;
+
+	@Override
+	public String toString() {
+		return "Position [symbol=" + symbol + ", quantity=" + quantity + ", avgPrice=" + avgPrice + ", value=" + value + ", cost=" + cost
+				+ ", totalBuy=" + totalBuy + ", totalSell=" + totalSell + ", perf=" + perf + ", lastTrade=" + lastTrade + "]";
+	}
+
+
+	public Double getValue() {
+		return value;
+	}
+
+
+	public void setValue(Double value) {
+		this.value = value;
+	}
+	
+	public Position value(Double value) {
+		this.value = value;
 		return this;
 	}
 
 
-	@Override
-	public String toString() {
-		return "Position [symbol=" + symbol + ", quantity=" + quantity + ", avgPrice=" + avgPrice + ", cost=" + cost
-				+ ", totalBuy=" + totalBuy + ", totalSell=" + totalSell + ", perf=" + perf + "]";
+	public Date getFirstTrade() {
+		return firstTrade;
+	}
+
+
+	public void setFirstTrade(Date firstTrade) {
+		this.firstTrade = firstTrade;
+	}
+	
+	public Position firstTrade(Date firstTrade) {
+		this.firstTrade = firstTrade;
+		return this;
+	}
+
+
+	public Date getLastTrade() {
+		return lastTrade;
+	}
+
+
+	public void setLastTrade(Date lastTrade) {
+		this.lastTrade = lastTrade;
+	}
+	
+	public Position lastTrade(Date lastTrade) {
+		this.lastTrade = lastTrade;
+		return this;
 	}
 
 }

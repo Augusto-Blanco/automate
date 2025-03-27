@@ -164,7 +164,7 @@ public class CryptobotRepository extends GenericRepository {
 		
 	
 	public List<Trade> getPendingTradesForAsset(Asset asset) {
-		return tradeRepository.findByAssetIdAndStateIn(asset.getId(), Arrays.asList("PENDING", "PARTIAL"));
+		return tradeRepository.findByAssetIdAndStateInOrderByTime(asset.getId(), Arrays.asList("PENDING", "PARTIAL"));
 	}
 	
 
