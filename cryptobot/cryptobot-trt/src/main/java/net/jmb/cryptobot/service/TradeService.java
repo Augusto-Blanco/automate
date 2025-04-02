@@ -148,7 +148,7 @@ public abstract class TradeService extends CommonService {
 		
 		Position position = asset.getPosition();
 		if (position == null) {
-			position = new Position().asset(asset).platform(platform).symbol(symbol);
+			position = new Position().asset(asset).platform(platform).symbol(symbol).totalBuy(0d).totalSell(0d).perf(0d).cost(0d).value(0d).quantity(0d).avgPrice(0d);
 			positionRepository.save(position);
 		}
 		Date firstTrade = position.getFirstTrade();
@@ -288,12 +288,13 @@ public abstract class TradeService extends CommonService {
 		if (asset != null && quantity > 0 && asset.getPosition() != null) {
 			Double avgCostPrice = asset.getPosition().getAvgPrice();
 			if (avgCostPrice != null && avgCostPrice > 0d) {				
-				Trade soldPositionTrade = sendOrder(asset, OrderSide.SELL, quantity, avgCostPrice * 1.01);
+				double price = avgCostPrice * (1 + asset.getVarLowLimit() / 100);
+				Trade soldPositionTrade = sendOrder(asset, OrderSide.SELL, quantity, price);
 				if (soldPositionTrade != null) {
 					getLogger().info("Position soldée pour " + asset.getSymbol() 
 						+ ": quantité vendue " + BigDecimal.valueOf(quantity).setScale(5, RoundingMode.HALF_EVEN)
-						+ ", prix " + BigDecimal.valueOf(avgCostPrice * 1.01).setScale(5, RoundingMode.HALF_EVEN)
-						+ ", montant " + BigDecimal.valueOf(avgCostPrice * 1.01 * quantity).setScale(2, RoundingMode.HALF_EVEN));
+						+ ", prix " + BigDecimal.valueOf(price).setScale(5, RoundingMode.HALF_EVEN)
+						+ ", montant " + BigDecimal.valueOf(price * quantity).setScale(2, RoundingMode.HALF_EVEN));
 					cryptobotRepository.saveTrade(soldPositionTrade);
 					return soldPositionTrade;
 				}

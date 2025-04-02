@@ -390,15 +390,13 @@ public class CotationService extends CommonService {
 					
 					if (currentSide.equals(OrderSide.BUY)) {
 						
-						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice *100;
+						Double deltaPrice = (cotation.getPrice() - buyPrice) / buyPrice * 100;
 						amountB100 = quantity * cotation.getPrice();
 						
-						boolean positiveDeltaPrice = deltaPrice >= 0.5 * asset.getVarLowLimit();
+						boolean positiveDeltaPrice = deltaPrice >= asset.getVarLowLimit();
 						boolean positiveSellCondition = positiveDeltaPrice && deltaFromBestBuy >= maxVarHigh ;
 						if (realEval) {
-							positiveSellCondition |= positiveDeltaPrice && (
-								deltaFromBestBuy >= 0.95 * maxVarHigh && !positiveVar5m || stopTrading && deltaFromBestBuy >= asset.getVarLowLimit()
-							);
+							positiveSellCondition |= positiveDeltaPrice && (deltaFromBestBuy >= 0.95 * maxVarHigh && !positiveVar5m || stopTrading);
 						}
 						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);						
 						
