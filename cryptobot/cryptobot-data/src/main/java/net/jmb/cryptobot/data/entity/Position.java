@@ -1,7 +1,10 @@
 package net.jmb.cryptobot.data.entity;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -180,8 +183,9 @@ public class Position extends AbstractEntity implements Serializable {
 
 	@Override
 	public String toString() {
-		return "Position [symbol=" + symbol + ", quantity=" + quantity + ", avgPrice=" + avgPrice + ", value=" + value + ", cost=" + cost
-				+ ", totalBuy=" + totalBuy + ", totalSell=" + totalSell + ", perf=" + perf + ", lastTrade=" + lastTrade + "]";
+		return "Position [symbol=" + symbol + ", quantity=" + numericVal(quantity) + ", avgPrice=" + numericVal(avgPrice) + ", cost=" + numericVal(cost) 
+			+ ", value=" + numericVal(value) + ", perf=" + numericVal(perf) + ", totalBuy=" + numericVal(totalBuy) + ", totalSell=" + numericVal(totalSell)
+			+ ", lastTrade=" + lastTrade + "]";
 	}
 
 
@@ -227,6 +231,16 @@ public class Position extends AbstractEntity implements Serializable {
 	public Position lastTrade(Date lastTrade) {
 		this.lastTrade = lastTrade;
 		return this;
+	}
+	
+	private String numericVal(Double val) {
+		if (val == null) {
+			return new BigDecimal(0.0).toPlainString();
+		}
+		String result = new BigDecimal(val).setScale(4, RoundingMode.HALF_EVEN).toPlainString();
+		result = Pattern.compile("(\\.[0-9]{3})0+$").matcher(result).replaceAll(matchResult -> matchResult.group(1));
+		result = Pattern.compile("(\\.[0-9]{2})0+$").matcher(result).replaceAll(matchResult -> matchResult.group(1));
+		return result;
 	}
 
 }
