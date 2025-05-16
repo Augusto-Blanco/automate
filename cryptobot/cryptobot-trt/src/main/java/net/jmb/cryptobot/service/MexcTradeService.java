@@ -16,6 +16,7 @@ import net.jmb.cryptobot.beans.MexcOrder;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
+import net.jmb.cryptobot.data.entity.Position;
 import net.jmb.cryptobot.data.entity.Trade;
 import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.OrderState;
@@ -84,6 +85,12 @@ public class MexcTradeService extends TradeService {
 							} else if (cotation.isSellFlag()) {								
 								Double lastPrice = getLastPrice(asset);
 								if (lastPrice > 0d && freeQuantity > 0d) {
+									Position position = asset.getPosition();
+									if (position != null && position.getAvgPrice() != null) {
+										if (position.getAvgPrice() > lastPrice) {
+											lastPrice = position.getAvgPrice();
+										}
+									}
 									trade = sendOrder(asset, OrderSide.SELL, freeQuantity, lastPrice);
 								}
 							}

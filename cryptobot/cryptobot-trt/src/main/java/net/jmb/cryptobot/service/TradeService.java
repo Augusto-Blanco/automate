@@ -141,7 +141,7 @@ public abstract class TradeService extends CommonService {
 	
 	
 	@Transactional
-	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")
+	@Scheduled(cron = "${cryptobot.position.scheduler.cron}")
 	public synchronized void updateTradesAndPosition() {		
 		
 		Asset asset = getAsset();
