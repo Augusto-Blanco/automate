@@ -210,7 +210,7 @@ public abstract class TradeService extends CommonService {
 	
 	
 	@Transactional
-	@Scheduled(cron = "0 2 0 * * SUN")  // chaque dimanche à minuit 2 minutes 
+	@Scheduled(cron = "${cryptobot.reset.evaluation.scheduler.cron}")  
 	public synchronized void resetEvaluations() {	
 		Asset asset = getAsset();
 		soldPosition(asset, null);

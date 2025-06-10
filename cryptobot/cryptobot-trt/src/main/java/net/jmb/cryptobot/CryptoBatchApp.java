@@ -23,9 +23,7 @@ public class CryptoBatchApp {
 	
 	static Logger logger = LoggerFactory.getLogger(CryptoBatchApp.class);
 	
-	
-	@Value("${noExchange:false}")
-	Boolean noExchange = false;
+
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -37,13 +35,19 @@ public class CryptoBatchApp {
 	
 	
 	@Component
-	public class TradeRunner implements CommandLineRunner {
+	public class TradeRunner implements CommandLineRunner {		
+		
+		@Value("${cryptobot.cotation.evaluation.scheduler.cron}")
+		String cotationEvalCron;		
 			
 		@Autowired
 		TradeService mexcTradeService;
 		
 		@Override
-		public void run(String... args) throws Exception {		
+		public void run(String... args) throws Exception {	
+			
+			System.out.println("cotationEvalCron : " + cotationEvalCron);
+			
 			mexcTradeService.initAndLock();		
 			if (mexcTradeService.canExchange()) {
 				mexcTradeService.registerLastCotations();

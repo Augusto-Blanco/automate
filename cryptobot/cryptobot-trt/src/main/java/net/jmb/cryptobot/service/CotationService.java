@@ -44,7 +44,7 @@ public class CotationService extends CommonService {
 			if (refCotation != null) {
 				return initEvaluationForCotations(asset, refCotation.getDatetime(), false);	
 			} else {
-				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), Period._6j));
+				refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), asset.getAnalysisPeriodEnum()));
 				if (refCotation != null) {
 					return initEvaluationForCotations(asset, refCotation.getDatetime(), true);
 				}
@@ -77,7 +77,7 @@ public class CotationService extends CommonService {
 			String symbol = asset.getSymbol();
 			Period analysisPeriod = asset.getAnalysisPeriodEnum();
 			if (analysisPeriod == null) {
-				analysisPeriod = Period._12h;
+				analysisPeriod = Period._24h;
 			}
 			Period frequencyPeriod = asset.getFrequencyPeriod();
 			if (frequencyPeriod == null) {
@@ -97,7 +97,7 @@ public class CotationService extends CommonService {
 				if (reset) {
 					startDate = PeriodUtil.previousDateForPeriod(startDate, analysisPeriod);
 				} else {
-					Date prevDate = PeriodUtil.previousDateForPeriod(startDate, Period._6h);
+					Date prevDate = PeriodUtil.previousDateForPeriod(startDate, analysisPeriod);
 					if (prevDate != null) {
 						Cotation minCotation = cryptobotRepository.getMinCotationBetweenDates(asset.getSymbol(), prevDate, startDate);
 						if (minCotation != null) {
