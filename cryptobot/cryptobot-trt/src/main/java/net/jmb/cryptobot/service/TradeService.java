@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
 import net.jmb.cryptobot.data.entity.Asset;
+import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Position;
 import net.jmb.cryptobot.data.entity.Trade;
@@ -23,6 +24,7 @@ import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.data.repository.AssetRepository;
 import net.jmb.cryptobot.data.repository.CryptobotRepository;
 import net.jmb.cryptobot.data.repository.PositionRepository;
+import net.jmb.cryptobot.util.PeriodUtil;
 
 @Service
 public abstract class TradeService extends CommonService {
@@ -52,6 +54,9 @@ public abstract class TradeService extends CommonService {
 	@Value("${noExchange:false}")
 	Boolean noExchange = false;
 	
+	@Value("${soldWhenReset:false}")
+	Boolean soldWhenReset = false;
+	
 	private boolean locked = true;
 	
 	
@@ -73,23 +78,34 @@ public abstract class TradeService extends CommonService {
 	protected abstract List<Trade> addUnknownTrades(Asset asset);
 	
 	
-	public synchronized void init(String symbol, String platform, Boolean canExchange) throws Exception {
-		this.platform = platform;
-		this.symbol = symbol;
-		this.initDate = null;
-		this.noExchange = (canExchange == null || !canExchange);
-		initAndLock();
+	public synchronized void init() throws Exception {		
+		lock();
+		Date now = new Date();
+		Date _48hBeforeNow = PeriodUtil.previousDateForPeriod(now, Period._48h);
+		if (canExchange()) {
+			registerLastCotations();
+		}
+		if (symbol != null) {
+			AssetConfig assetConfig = null;
+			Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
+			if (lastRatedCotation != null && lastRatedCotation.getDatetime().after(_48hBeforeNow)) {
+				assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation);				
+			}
+			if (assetConfig == null || StringUtils.isNotBlank(initDate)) {
+				evaluateLastCotations();
+			}
+		}		
+		unlock();		
 	}
 	
 	
-	public synchronized void initAndLock() throws Exception {
+	protected synchronized void lock() throws Exception {
 		if (symbol != null) {
 			locked = true;			
 		}
-	}
+	}	
 	
-	
-	public void unlock() {
+	protected void unlock() {
 		locked = false;
 	}
 	
@@ -213,7 +229,9 @@ public abstract class TradeService extends CommonService {
 	@Scheduled(cron = "${cryptobot.reset.evaluation.scheduler.cron}")  
 	public synchronized void resetEvaluations() {	
 		Asset asset = getAsset();
-		soldPosition(asset, null);
+		if (soldWhenReset) {
+			soldPosition(asset, null);
+		}
 		cotationService.resetEvaluationForAsset(asset, Period._48h);		
 	}
 	
@@ -285,22 +303,32 @@ public abstract class TradeService extends CommonService {
 		if (quantity == null) {
 			quantity = getFreeAssetQuantity(asset);
 		}
-		if (asset != null && quantity > 0 && asset.getPosition() != null) {
-			Double avgCostPrice = asset.getPosition().getAvgPrice();
-			if (avgCostPrice != null && avgCostPrice > 0d) {				
-				double price = avgCostPrice * (1 + asset.getVarLowLimit() / 100);
-				Trade soldPositionTrade = sendOrder(asset, OrderSide.SELL, quantity, price);
-				if (soldPositionTrade != null) {
-					getLogger().info("Position soldée pour " + asset.getSymbol() 
-						+ ": quantité vendue " + BigDecimal.valueOf(quantity).setScale(5, RoundingMode.HALF_EVEN)
-						+ ", prix " + BigDecimal.valueOf(price).setScale(5, RoundingMode.HALF_EVEN)
-						+ ", montant " + BigDecimal.valueOf(price * quantity).setScale(2, RoundingMode.HALF_EVEN));
-					cryptobotRepository.saveTrade(soldPositionTrade);
-					return soldPositionTrade;
-				}
+		Double minPriceForSell = getMinPriceForSell(asset);
+		if (minPriceForSell != null && quantity > 0) {
+			Trade soldPositionTrade = sendOrder(asset, OrderSide.SELL, quantity, minPriceForSell);
+			if (soldPositionTrade != null) {
+				getLogger().info("Position soldée pour " + asset.getSymbol() 
+					+ ": quantité vendue " + BigDecimal.valueOf(quantity).setScale(5, RoundingMode.HALF_EVEN)
+					+ ", prix " + BigDecimal.valueOf(minPriceForSell).setScale(5, RoundingMode.HALF_EVEN)
+					+ ", montant " + BigDecimal.valueOf(minPriceForSell * quantity).setScale(2, RoundingMode.HALF_EVEN));
+				cryptobotRepository.saveTrade(soldPositionTrade);
+				return soldPositionTrade;
 			}
 		}
 		return null;
+	}
+	
+	
+	public Double getMinPriceForSell(Asset asset) {
+
+		Double priceForSell = null;
+		if (asset != null && asset.getPosition() != null) {
+			Double avgCostPrice = asset.getPosition().getAvgPrice();
+			if (avgCostPrice != null && avgCostPrice > 0d) {				
+				priceForSell = avgCostPrice * (1 + asset.getVarLowLimit() / 100);				
+			}
+		}
+		return priceForSell;
 	}
 	
 	

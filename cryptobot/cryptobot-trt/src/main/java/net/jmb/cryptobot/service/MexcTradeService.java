@@ -72,9 +72,7 @@ public class MexcTradeService extends TradeService {
 								Double freeAmount = getFreeQuantity(asset.getPair(), accountInfos);
 								Double maxInvest = getDesiredAmountToBuy(asset, freeAmount);
 								Double lastPrice = getLastPrice(asset);
-								if (maxInvest > 1d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
-									// si on a déjà l'actif en stock on récupère son prix d'achat moyen et on place un ordre de vente limite au-dessus
-									soldPosition(asset, freeQuantity);				
+								if (maxInvest > 50d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
 									Double quantity = maxInvest / lastPrice; 
 									trade = sendOrder(asset, OrderSide.BUY, quantity, lastPrice);			
 								} else {

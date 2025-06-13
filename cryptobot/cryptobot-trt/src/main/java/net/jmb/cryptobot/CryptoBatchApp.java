@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -25,8 +24,7 @@ public class CryptoBatchApp {
 	
 
 	
-	public static void main(String[] args) throws Exception {
-		
+	public static void main(String[] args) throws Exception {		
 		ConfigurableApplicationContext ctx = SpringApplication.run(CryptoBatchApp.class, args);
 		if (getParameters(args).get("daemon") == null) {
 			ctx.close();			
@@ -36,26 +34,14 @@ public class CryptoBatchApp {
 	
 	@Component
 	public class TradeRunner implements CommandLineRunner {		
-		
-		@Value("${cryptobot.cotation.evaluation.scheduler.cron}")
-		String cotationEvalCron;		
-			
+
 		@Autowired
 		TradeService mexcTradeService;
 		
 		@Override
-		public void run(String... args) throws Exception {	
-			
-			System.out.println("cotationEvalCron : " + cotationEvalCron);
-			
-			mexcTradeService.initAndLock();		
-			if (mexcTradeService.canExchange()) {
-				mexcTradeService.registerLastCotations();
-			}
-			mexcTradeService.evaluateLastCotations();	
-			mexcTradeService.unlock();
-		}
-		
+		public void run(String... args) throws Exception {			
+			mexcTradeService.init();
+		}		
 	}
 	
 	
