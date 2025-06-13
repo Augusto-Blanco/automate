@@ -27,6 +27,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import jakarta.transaction.Transactional;
 import net.jmb.cryptobot.beans.MexcAccountInfo;
 import net.jmb.cryptobot.beans.MexcOrder;
+import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.enums.OrderSide;
 
@@ -49,12 +50,13 @@ public class MexcRestClientService extends CommonService {
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })	
 	@Transactional	
-	public List<Cotation> updateCotationsPrice(String symbol) throws Exception {
+	public List<Cotation> updateCotationsPrice(Asset asset) throws Exception {
+		String symbol = asset.getSymbol();
 		if (symbol != null && mexcRestTemplate != null) {			
 			String url = BASE_URL + "/klines";
 			HttpMethod httpMethod = HttpMethod.GET;
 			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();			
-			queryParams.add("symbol", symbol.concat("USDT"));
+			queryParams.add("symbol", symbol.concat(asset.getPair()));
 			queryParams.add("interval", "5m");			
 			List<Cotation> newCotations = new ArrayList<Cotation>();			
 			try {
@@ -83,12 +85,13 @@ public class MexcRestClientService extends CommonService {
 	
 	
 	@SuppressWarnings({"rawtypes", "unchecked", "serial"})
-	public Double getLastPrice(String symbol) {
+	public Double getLastPrice(Asset asset) {
+		String symbol = asset.getSymbol();
 		if (mexcRestTemplate != null && symbol != null) {			
 			String url = BASE_URL + "/ticker/price";
 			HttpMethod httpMethod = HttpMethod.GET;
 			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {{
-				add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));				
+				add("symbol", symbol.concat(asset.getPair()));				
 			}};			
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
@@ -124,12 +127,13 @@ public class MexcRestClientService extends CommonService {
 	
 	
 	@SuppressWarnings("serial")
-	public MexcOrder sendOrder(String symbol, OrderSide orderSide, BigDecimal quantity, BigDecimal price) {
+	public MexcOrder sendOrder(Asset asset, OrderSide orderSide, BigDecimal quantity, BigDecimal price) {
+		String symbol = asset.getSymbol();
 		if (mexcRestTemplate != null && symbol != null) {			
 			String url = BASE_URL + "/order";
 			HttpMethod httpMethod = HttpMethod.POST;
 			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>() {{
-				add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+				add("symbol", symbol.concat(asset.getPair()));
 				add("side", orderSide.name());
 				add("type", "LIMIT");
 				add("quantity", "" + quantity.toPlainString());
@@ -149,12 +153,13 @@ public class MexcRestClientService extends CommonService {
 	
 
 	
-	public MexcOrder requestOrder(String symbol, String orderId) {
+	public MexcOrder requestOrder(Asset asset, String orderId) {
+		String symbol = asset.getSymbol();
 		if (mexcRestTemplate != null && orderId != null) {			
 			String url = BASE_URL + "/order";
 			HttpMethod httpMethod = HttpMethod.GET;
 			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
-			queryParams.add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+			queryParams.add("symbol", symbol.concat(asset.getPair()));
 			queryParams.add("orderId", orderId);
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
@@ -170,7 +175,8 @@ public class MexcRestClientService extends CommonService {
 	
 	
 	
-	public List<MexcOrder> allOrders(String symbol, Date startDate) {
+	public List<MexcOrder> allOrders(Asset asset, Date startDate) {
+		String symbol = asset.getSymbol();
 		if (mexcRestTemplate != null && symbol != null) {						
 			String url = BASE_URL + "/allOrders";
 			HttpMethod httpMethod = HttpMethod.GET;			
@@ -180,7 +186,7 @@ public class MexcRestClientService extends CommonService {
 				startDate = calendar.getTime();
 			}
 			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
-			queryParams.add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+			queryParams.add("symbol", symbol.concat(asset.getPair()));
 			queryParams.add("startTime", String.valueOf(startDate.getTime()));
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
@@ -195,12 +201,13 @@ public class MexcRestClientService extends CommonService {
 	}
 
 
-	public List<MexcOrder> openOrders(String symbol) {
+	public List<MexcOrder> openOrders(Asset asset) {
+		String symbol = asset.getSymbol();
 		if (mexcRestTemplate != null && symbol != null) {			
 			String url = BASE_URL + "/openOrders";
 			HttpMethod httpMethod = HttpMethod.GET;
 			LinkedMultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
-			queryParams.add("symbol", symbol.contains("USD") ? symbol : symbol.concat("USDT"));
+			queryParams.add("symbol", symbol.concat(asset.getPair()));
 			try {
 				RequestEntity<?> request = buildRequest(url, httpMethod, queryParams);
 				ResponseEntity<List<MexcOrder>> result = mexcRestTemplate.exchange(request, new ParameterizedTypeReference<List<MexcOrder>>() {});

@@ -31,6 +31,7 @@ public class Asset extends AbstractEntity implements Serializable {
 
 	private String platform;
 	private String symbol;
+	private String pair;
 	private Double maxInvest;
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date startTime;
@@ -112,6 +113,20 @@ public class Asset extends AbstractEntity implements Serializable {
 	public void setSymbol(String symbol) {
 		this.symbol = symbol;
 	}
+	
+	public String getPair() {
+		return pair;
+	}
+
+	public void setPair(String pair) {
+		this.pair = pair;
+	}
+	
+	public Asset pair(String pair) {
+		this.pair = pair;
+		return this;
+	}
+	
 
 	public Asset startTime(Date startTime) {
 		this.startTime = startTime;

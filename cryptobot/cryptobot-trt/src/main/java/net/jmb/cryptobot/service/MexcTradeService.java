@@ -37,7 +37,8 @@ public class MexcTradeService extends TradeService {
 	@Transactional
 	public synchronized List<Cotation> registerLastCotations() throws Exception {
 		if (canExchange()) {
-			List<Cotation> newCotations = restClientService.updateCotationsPrice(symbol);
+			Asset asset = getAsset();			
+			List<Cotation> newCotations = restClientService.updateCotationsPrice(asset);
 			return newCotations;
 		}
 		return null;
@@ -51,7 +52,7 @@ public class MexcTradeService extends TradeService {
 	public synchronized void evaluateTradeForLastCotation() throws Exception {
 		
 		if (canExchange() && !isLocked()) {			
-			Asset asset = getAsset();			
+			Asset asset = getAsset();
 			if (asset != null) {				
 				Trade trade = null;				
 				List<Cotation> lastCotations = registerLastCotations();			
@@ -68,7 +69,7 @@ public class MexcTradeService extends TradeService {
 							MexcAccountInfo accountInfos = restClientService.getAccountInfos();
 							Double freeQuantity = getFreeQuantity(symbol, accountInfos);							
 							if (cotation.isBuyFlag()) {												
-								Double freeAmount = getFreeQuantity("USDT", accountInfos);
+								Double freeAmount = getFreeQuantity(asset.getPair(), accountInfos);
 								Double maxInvest = getDesiredAmountToBuy(asset, freeAmount);
 								Double lastPrice = getLastPrice(asset);
 								if (maxInvest > 1d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
@@ -150,7 +151,7 @@ public class MexcTradeService extends TradeService {
 				case BUY -> new BigDecimal(price * 1.001).setScale(nbDecimals, RoundingMode.HALF_UP);
 				case SELL -> new BigDecimal(price * 0.999).setScale(nbDecimals, RoundingMode.HALF_DOWN);		
 			};			
-			MexcOrder sendOrder = restClientService.sendOrder(symbol, orderSide, qty, decPrice);
+			MexcOrder sendOrder = restClientService.sendOrder(asset, orderSide, qty, decPrice);
 			if (sendOrder != null) {
 				Trade trade = mapOrderIntoTrade(asset, sendOrder, new Trade());
 				if (trade.getAmount() == null) {
@@ -203,7 +204,7 @@ public class MexcTradeService extends TradeService {
 	@Override
 	protected Trade updateTradeState(Asset asset, Trade trade) {
 		try {
-			MexcOrder order = restClientService.requestOrder(symbol, trade.getTradeRef());
+			MexcOrder order = restClientService.requestOrder(asset, trade.getTradeRef());
 			if (order != null) {
 				trade = mapOrderIntoTrade(asset, order, trade);
 			}
@@ -218,8 +219,8 @@ public class MexcTradeService extends TradeService {
 	protected List<Trade> addUnknownTrades(Asset asset) {
 		try {			
 			List<MexcOrder> orders = new ArrayList<MexcOrder>();			
-			List<MexcOrder> newOrders = restClientService.openOrders(symbol);			
-			List<MexcOrder> allOrders = restClientService.allOrders(symbol, PeriodUtil.previousDateForPeriod(new Date(), Period._48h));			
+			List<MexcOrder> newOrders = restClientService.openOrders(asset);			
+			List<MexcOrder> allOrders = restClientService.allOrders(asset, PeriodUtil.previousDateForPeriod(new Date(), Period._48h));			
 			if (newOrders != null) {
 				orders.addAll(newOrders);
 			}
@@ -249,7 +250,7 @@ public class MexcTradeService extends TradeService {
 
 	@Override
 	public Double getLastPrice(Asset asset) {
-		Double lastPrice = restClientService.getLastPrice(asset.getSymbol());
+		Double lastPrice = restClientService.getLastPrice(asset);
 		return lastPrice;
 	}
 	
