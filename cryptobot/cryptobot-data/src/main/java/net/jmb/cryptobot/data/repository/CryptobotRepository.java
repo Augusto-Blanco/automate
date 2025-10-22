@@ -33,10 +33,19 @@ public class CryptobotRepository extends GenericRepository {
 	
 	
 	
-	public List<Cotation> getCotationsSinceDate(String symbol, Date startDate) {		
+	public List<Cotation> getCotationsSinceDate(String symbol, Date startDate) {	
+		return getCotationsSinceDate(symbol, startDate, false);		
+	}
+	
+	
+	public List<Cotation> getCotationsSinceDate(String symbol, Date startDate, boolean analysisByHour) {		
 		List<Cotation> cotations = null;		
-		if (startDate != null) {				
-			cotations = cotationRepository.findBySymbolEqualsAndDatetimeGreaterThanEqualOrderByDatetime(symbol, startDate);
+		if (startDate != null) {
+			if (!analysisByHour) {
+				cotations = cotationRepository.findBySymbolEqualsAndDatetimeGreaterThanEqualOrderByDatetime(symbol, startDate);
+			} else {
+				cotations = cotationRepository.findBySymbolEqualsAndDatetimeGreaterThanEqualAndTopHourTrueOrderByDatetime(symbol, startDate);
+			}
 		}		
 		return cotations;		
 	}
@@ -66,14 +75,19 @@ public class CryptobotRepository extends GenericRepository {
 	}
 	
 	
-	public Cotation getLastCotationBeforeDate(String symbol, Date dateRef) {
+	public Cotation getLastCotationBeforeDate(String symbol, Date dateRef, boolean longTimeAnalysis) {
 		Cotation cotation = null;
 		
 		if (symbol != null) {
 			if (dateRef == null) {
 				dateRef = new Date();
 			}
-			List<Cotation> lastCotationsForSymbolBeforeDate = cotationRepository.findLastCotationForSymbolBeforeDate(symbol, dateRef);
+			List<Cotation> lastCotationsForSymbolBeforeDate = null;
+			if (longTimeAnalysis) {
+				lastCotationsForSymbolBeforeDate = cotationRepository.findLastHourCotationForSymbolBeforeDate(symbol, dateRef);
+			} else {
+				lastCotationsForSymbolBeforeDate = cotationRepository.findLastCotationForSymbolBeforeDate(symbol, dateRef);
+			}
 			if (lastCotationsForSymbolBeforeDate != null && lastCotationsForSymbolBeforeDate.size() > 0) {
 				cotation = lastCotationsForSymbolBeforeDate.get(lastCotationsForSymbolBeforeDate.size() - 1);
 			}
@@ -139,8 +153,26 @@ public class CryptobotRepository extends GenericRepository {
 	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
 		AssetConfig assetConfig = null;
 		List<AssetConfig> configList = assetConfigRepository.findBySymbolAndDate(cotation.getSymbol(), cotation.getDatetime());
-		if (configList != null && configList.size() > 0) {
-			assetConfig = configList.get(configList.size() - 1);
+		if (configList != null && configList.size() > 0) {			
+			for (AssetConfig wAssetConfig : configList) {
+				if (assetConfig == null) {
+					assetConfig = new AssetConfig().symbol(wAssetConfig.getSymbol()).maxVarHigh(wAssetConfig.getMaxVarHigh()).maxVarLow(wAssetConfig.getMaxVarLow())
+							.stopLoss(wAssetConfig.getStopLoss()).startTime(wAssetConfig.getStartTime()).endTime(wAssetConfig.getEndTime()).analysisPeriod(wAssetConfig.getAnalysisPeriod());
+				} else {
+					if (assetConfig.getMaxVarHigh().compareTo(wAssetConfig.getMaxVarHigh()) > 0) {
+						assetConfig.maxVarHigh(wAssetConfig.getMaxVarHigh());
+					}
+					if (assetConfig.getMaxVarLow().compareTo(wAssetConfig.getMaxVarLow()) < 0) {
+						assetConfig.maxVarLow(wAssetConfig.getMaxVarLow());
+					}
+					if (assetConfig.getAnalysisPeriodEnum().compareTo(wAssetConfig.getAnalysisPeriodEnum()) < 0) {
+						assetConfig.analysisPeriod(wAssetConfig.getAnalysisPeriod());
+					}
+					if (assetConfig.getStartTime().compareTo(wAssetConfig.getStartTime()) > 0) {
+						assetConfig.startTime(wAssetConfig.getStartTime());
+					}					
+				}
+			}
 		}
 		return assetConfig;
 	}	

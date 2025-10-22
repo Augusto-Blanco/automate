@@ -3,6 +3,8 @@ package net.jmb.cryptobot.service;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -71,6 +73,11 @@ public class MexcRestClientService extends CommonService {
 						String resultPrice = (String) list.get(1);
 						Double price = Double.valueOf(resultPrice);
 						Cotation cotation = new Cotation().symbol(symbol).datetime(datetime).price(price);
+						
+						LocalDateTime instant = LocalDateTime.ofInstant(datetime.toInstant(), ZoneId.systemDefault());
+						if (instant.getMinute() == 0) {
+							cotation.topHour();
+						}						
 						newCotations.add(cotation);					
 					}					
 					newCotations = cotationService.registerNewCotations(symbol, newCotations);

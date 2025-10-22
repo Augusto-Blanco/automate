@@ -15,6 +15,10 @@ public enum Period implements Comparable<Period> {
 	_6j("6j"),
 	_12j("12j"),
 	_30j("30j"),
+	_2M("2M"),
+	_3M("3M"),
+	_6M("6M"),
+	_12M("12M"),
 	INFINITE("");
 	
 	public final String val;

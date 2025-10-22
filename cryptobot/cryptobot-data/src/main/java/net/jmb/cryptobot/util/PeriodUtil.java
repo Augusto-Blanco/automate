@@ -1,5 +1,7 @@
 package net.jmb.cryptobot.util;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 import net.jmb.cryptobot.data.enums.Period;
@@ -15,27 +17,31 @@ public class PeriodUtil {
 			refDate = new Date();
 		}
 		if (period == null) {
-			period = Period._12h;
+			period = Period._24h;
 		}		
-		long seconds = refDate.getTime() / 1000;		
+		LocalDateTime localDate = LocalDateTime.ofInstant(refDate.toInstant(), ZoneId.systemDefault());
 		
-		Long previousTime = switch (period) {
-			case _5m -> seconds - 5 * 60;
-			case _15m -> seconds - 15 * 60;
-			case _30m -> seconds - 30 * 60;
-			case _1h -> seconds - 60 * 60;
-			case _6h -> seconds - 6 * 60 * 60;
-			case _12h -> seconds - 12 * 60 * 60;
-			case _24h -> seconds - 24 * 60 * 60;
-			case _48h -> seconds - 48 * 60 * 60;
-			case _6j -> seconds - 6 * 24 * 60 * 60;
-			case _12j -> seconds - 12 * 24 * 60 * 60;
-			case _30j -> seconds - 30 * 24 * 60 * 60;
-			case INFINITE -> seconds - 365 * 24 * 60 * 60;
-		};		
+		LocalDateTime previousTime  = switch (period) {
+			case _5m -> localDate.minusMinutes(5);
+			case _15m -> localDate.minusMinutes(15);
+			case _30m -> localDate.minusMinutes(30);
+			case _1h -> localDate.minusHours(1);
+			case _6h -> localDate.minusHours(6);
+			case _12h -> localDate.minusHours(12);
+			case _24h -> localDate.minusHours(24);
+			case _48h -> localDate.minusHours(48);
+			case _6j -> localDate.minusDays(6);
+			case _12j -> localDate.minusDays(12);
+			case _30j -> localDate.minusDays(30);
+			case _2M -> localDate.minusMonths(2);
+			case _3M -> localDate.minusMonths(3);
+			case _6M ->localDate.minusMonths(6);
+			case _12M -> localDate.minusMonths(12);
+			case INFINITE -> localDate.minusYears(2);
+		};	
 		
 		if (previousTime != null) {
-			previousDate = new Date(previousTime * 1000);		
+			previousDate = Date.from(previousTime.atZone(ZoneId.systemDefault()).toInstant());
 		}
 		return previousDate;		
 	}
@@ -48,28 +54,34 @@ public class PeriodUtil {
 			refDate = new Date();
 		}
 		if (period == null) {
-			period = Period._12h;
-		}		
-		long seconds = refDate.getTime() / 1000;		
+			period = Period._24h;
+		}
+				
+		LocalDateTime localDate = LocalDateTime.ofInstant(refDate.toInstant(), ZoneId.systemDefault());
 		
-		Long nextTime = switch (period) {
-			case _5m -> seconds + 5 * 60;
-			case _15m -> seconds + 15 * 60;
-			case _30m -> seconds + 30 * 60;
-			case _1h -> seconds + 60 * 60;
-			case _6h -> seconds + 6 * 60 * 60;
-			case _12h -> seconds + 12 * 60 * 60;
-			case _24h -> seconds + 24 * 60 * 60;
-			case _48h -> seconds + 48 * 60 * 60;
-			case _6j -> seconds + 6 * 24 * 60 * 60;
-			case _12j -> seconds + 12 * 24 * 60 * 60;
-			case _30j -> seconds + 30 * 24 * 60 * 60;
-			case INFINITE -> seconds + 365 * 24 * 60 * 60;
-		};		
+		LocalDateTime nextTime  = switch (period) {
+			case _5m -> localDate.plusMinutes(5);
+			case _15m -> localDate.plusMinutes(15);
+			case _30m -> localDate.plusMinutes(30);
+			case _1h -> localDate.plusHours(1);
+			case _6h -> localDate.plusHours(6);
+			case _12h -> localDate.plusHours(12);
+			case _24h -> localDate.plusHours(24);
+			case _48h -> localDate.plusHours(48);
+			case _6j -> localDate.plusDays(6);
+			case _12j -> localDate.plusDays(12);
+			case _30j -> localDate.plusDays(30);
+			case _2M -> localDate.plusMonths(2);
+			case _3M -> localDate.plusMonths(3);
+			case _6M ->localDate.plusMonths(6);
+			case _12M -> localDate.plusMonths(12);
+			case INFINITE -> localDate.minusYears(2);
+		};	
 		
 		if (nextTime != null) {
-			nextDate = new Date(nextTime * 1000);		
+			nextDate = Date.from(nextTime.atZone(ZoneId.systemDefault()).toInstant());
 		}
+		
 		return nextDate;		
 	}
 

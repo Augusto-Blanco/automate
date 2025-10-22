@@ -33,6 +33,14 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 			+ 	"	where b.symbol = :symbol and b.datetime <= :maxDate "
 			+	")";
 	
+	public static final String LAST_HOUR_COTATION_FOR_SYMBOL_QUERY = 		
+			"select a from Cotation a "
+		+   "where a.symbol = :symbol and a.datetime = ( "
+		+   "	select max(b.datetime) from Cotation b "
+		+ 	"	where b.symbol = :symbol and b.datetime <= :maxDate "
+		+ 	"	and b.topHour = true "
+		+	")";
+	
 	public static final String LAST_SELL_COTATION_BEFORE_DATE_QUERY = 		
 			"select a from Cotation a "
 		+   "where a.symbol = :symbol and a.currentSide = 'SELL' and a.datetime = ( "
@@ -71,6 +79,9 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 	@Query(LAST_COTATION_FOR_SYMBOL_QUERY)
 	List<Cotation> findLastCotationForSymbolBeforeDate(String symbol, Date maxDate);
 	
+	@Query(LAST_HOUR_COTATION_FOR_SYMBOL_QUERY)
+	List<Cotation> findLastHourCotationForSymbolBeforeDate(String symbol, Date maxDate);
+	
 	@Query(LAST_SELL_COTATION_BEFORE_DATE_QUERY)
 	List<Cotation> findLastSellCotationBeforeDate(String symbol, Date date);
 	
@@ -84,6 +95,8 @@ public interface CotationRepository extends JpaRepository<Cotation, Long> {
 
 	
 	List<Cotation> findBySymbolEqualsAndDatetimeGreaterThanEqualOrderByDatetime(String symbol, Date datetime);
+	
+	List<Cotation> findBySymbolEqualsAndDatetimeGreaterThanEqualAndTopHourTrueOrderByDatetime(String symbol, Date datetime);
 	
 	List<Cotation> findBySymbolEqualsAndDatetimeBetweenOrderByDatetime(String symbol, Date datetime0, Date datetime1);
 

@@ -23,12 +23,12 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 		+   "where a.symbol = :symbol and a.endTime <= :dateRef "
 		+ 	"and a.endTime = ( "
 		+   "	select max(b.endTime) from AssetConfig b "
-		+ 	"	where b.symbol = :symbol and b.endTime <= :dateRef "
+		+ 	"	where b.symbol = :symbol and b.analysisPeriod  = a.analysisPeriod and b.endTime <= :dateRef "
 		+	")";
 
 	
 	
-	default Specification<AssetConfig> specDateGreaterOrEquals(String symbol, Date refDate) {		
+	default Specification<AssetConfig> specDateGreaterOrEquals(String symbol, Date refDate, String analysisPeriod) {		
 		Specification<AssetConfig> specif = (root, query, criteria) -> {
 			Predicate predicate = criteria.conjunction();	
 			if (refDate != null) {
@@ -39,14 +39,18 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 				Predicate symbolPredicate = criteria.equal(root.get("symbol"), symbol);
 				predicate = criteria.and(predicate, symbolPredicate);
 			}
+			if (analysisPeriod != null) {
+				Predicate periodPredicate = criteria.equal(root.get("analysisPeriod"), analysisPeriod);
+				predicate = criteria.and(predicate, periodPredicate);
+			}
 			return predicate;
 		};
 		return specif;
 	}
 	
 	
-	default public long deleteDateGreaterOrEquals(String symbol, Date refDate) {
-		return delete(specDateGreaterOrEquals(symbol, refDate));
+	default public long deleteDateGreaterOrEquals(String symbol, Date refDate, String analysisPeriod) {
+		return delete(specDateGreaterOrEquals(symbol, refDate, analysisPeriod));
 	}
 	
 	List<AssetConfig> findBySymbolEqualsAndEndTimeGreaterThanEqual(String symbol, Date dateRef);

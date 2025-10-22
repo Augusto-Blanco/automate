@@ -68,6 +68,8 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 	private Boolean canResetBestSellPrice;
 	private Boolean canResetBestBuyPrice;
 	
+	private Boolean topHour;
+	
 	//bi-directional one-to-one association to Trade
 	@OneToOne()
 	@JoinColumn(name = "tradeId")
@@ -730,6 +732,21 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 			return this;
 		}
 
+
+		public Boolean getTopHour() {
+			return topHour;
+		}
+
+
+		public void setTopHour(Boolean topHour) {
+			this.topHour = topHour;
+		}
+
+
+		public Cotation topHour() {
+			this.topHour = true;
+			return this;
+		}
 
 		
 

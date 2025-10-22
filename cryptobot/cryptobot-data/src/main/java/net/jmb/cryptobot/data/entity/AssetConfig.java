@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.Transient;
+import net.jmb.cryptobot.data.enums.Period;
 
 
 /**
@@ -35,8 +36,10 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 	private BigDecimal stopLoss;
 	@Transient
 	private boolean realEval;
+	private String analysisPeriod;
 	
 		
+
 	public AssetConfig() {
 	}
 
@@ -141,6 +144,25 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 	public AssetConfig realEval(boolean realEval) {
 		this.realEval = realEval;
 		return this;
+	}
+	
+	
+	public String getAnalysisPeriod() {
+		return analysisPeriod;
+	}
+
+	public void setAnalysisPeriod(String analysisPeriod) {
+		this.analysisPeriod = analysisPeriod;
+	}
+
+
+	public AssetConfig analysisPeriod(String analysisPeriod) {
+		setAnalysisPeriod(analysisPeriod);
+		return this;
+	}
+	
+	public Period getAnalysisPeriodEnum() {
+		return Period.get(analysisPeriod);
 	}
 
 
