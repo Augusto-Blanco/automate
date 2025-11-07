@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.Transient;
+import net.jmb.cryptobot.data.enums.ModeEval;
 import net.jmb.cryptobot.data.enums.Period;
 
 
@@ -35,7 +36,7 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 	private BigDecimal maxVarLow;
 	private BigDecimal stopLoss;
 	@Transient
-	private boolean realEval;
+	private ModeEval modeEval;
 	private String analysisPeriod;
 	
 		
@@ -133,16 +134,20 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 
 	
 	public boolean isRealEval() {
-		return realEval;
-	}
-
-
-	public void setRealEval(boolean realEval) {
-		this.realEval = realEval;
+		return modeEval.real;
 	}
 	
-	public AssetConfig realEval(boolean realEval) {
-		this.realEval = realEval;
+	public ModeEval getModeEval() {
+		return this.modeEval;
+	}
+
+
+	public void setModeEval(ModeEval modeEval) {
+		this.modeEval = modeEval;
+	}
+	
+	public AssetConfig modeEval(ModeEval modeEval) {
+		this.modeEval = modeEval;
 		return this;
 	}
 	

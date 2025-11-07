@@ -18,6 +18,7 @@ import jakarta.transaction.Transactional;
 import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
+import net.jmb.cryptobot.data.enums.ModeEval;
 import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.data.repository.CryptobotRepository;
@@ -201,14 +202,13 @@ public class CotationService extends CommonService {
 		}
 		
 		Cotation lastCotation = null;
-		getLogger().info("-- Record evaluations --");
 		for (AssetConfig assetConfig : assetConfigList) {
 			List<Cotation> cotationList = map.get(assetConfig);
 			if (lastCotation != null) {
 				checkAndResetLossForCotation(asset, lastCotation);
 				cotationList.add(0, lastCotation);
 			}
-			evaluateTradesForCotations(cotationList, asset, assetConfig.realEval(true));
+			evaluateTradesForCotations(cotationList, asset, assetConfig.modeEval(ModeEval.RECORD));
 			lastCotation = cotationList.get(cotationList.size() - 1);
 		}
 		getLogger().info("");
@@ -269,7 +269,7 @@ public class CotationService extends CommonService {
 
 	
 	public Cotation evaluateTradesForCotations(List<Cotation> cotationGrid, Asset asset, Double maxVarHigh, Double maxVarLow) {
-		AssetConfig assetConfig = new AssetConfig().maxVarHigh(BigDecimal.valueOf(maxVarHigh)).maxVarLow(BigDecimal.valueOf(maxVarLow)).stopLoss(BigDecimal.valueOf(100)).realEval(false);
+		AssetConfig assetConfig = new AssetConfig().maxVarHigh(BigDecimal.valueOf(maxVarHigh)).maxVarLow(BigDecimal.valueOf(maxVarLow)).stopLoss(BigDecimal.valueOf(100)).modeEval(ModeEval.EVAL);
 		return evaluateTradesForCotations(cotationGrid, asset, assetConfig);
 	}
 	
@@ -390,7 +390,12 @@ public class CotationService extends CommonService {
 						if (realEval) {
 							positiveSellCondition |= positiveDeltaPrice && (deltaFromBestBuy >= 0.95 * maxVarHigh && !positiveVar5m || stopTrading);
 						}
-						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);						
+						boolean negativeSellCondition = realEval && (deltaPrice <= -stopLoss || percentLoss <= -maxPercentLoss);
+						
+						if (realEval) {
+							getLogger().info("Delta / meilleur prix achat : " + new BigDecimal(deltaFromBestBuy).setScale(1, RoundingMode.HALF_EVEN) + "%");
+							getLogger().info("Delta / dernier prix achat : " + new BigDecimal(deltaPrice).setScale(1, RoundingMode.HALF_EVEN) + "%");
+						}
 						
 						if (positiveSellCondition || negativeSellCondition) {							
 							currentSide = OrderSide.SELL;
@@ -427,6 +432,11 @@ public class CotationService extends CommonService {
 					}
 					
 					if (evaluateBuy) {
+						
+						if (realEval) {
+							String msgEvalFromBestSell = "Delta / meilleur prix vente : " + new BigDecimal(deltaFromBestSell).setScale(1, RoundingMode.HALF_EVEN) + "%";
+							getLogger().info(msgEvalFromBestSell);
+						}
 							
 						if (deltaFromBestSell <= -maxVarLow && !stopTrading) {
 							// on tente de sécuriser l'achat au maximum en fonction de la tendance et des pertes déjà subies
@@ -470,7 +480,7 @@ public class CotationService extends CommonService {
 						bestBuyPrice = cotation.getPrice();
 						canResetBestBuyPrice = false;
 						canResetBestSellPrice = true;
-					} else if (realEval && Boolean.TRUE.equals(canResetBestBuyPrice) && deltaFromBestSell <= -maxVarLow) {
+					} else if (!realEval && Boolean.TRUE.equals(canResetBestBuyPrice) && deltaFromBestSell <= -maxVarLow) {
 						isResetBuy = true;
 						antePrevBestBuy = cotation.getPrevBestBuyPrice();
 						prevBestBuyPrice = cotation.getBestBuyPrice();
@@ -479,7 +489,7 @@ public class CotationService extends CommonService {
 						canResetBestSellPrice = true;
 					}					
 					if (bestSellPrice == null || cotation.getPrice() > bestSellPrice
-							|| realEval && Boolean.TRUE.equals(canResetBestSellPrice) && deltaFromBestBuy >= maxVarHigh && !isResetBuy) {						
+							|| !realEval && Boolean.TRUE.equals(canResetBestSellPrice) && deltaFromBestBuy >= maxVarHigh && !isResetBuy) {						
 						bestSellPrice = cotation.getPrice();
 						canResetBestSellPrice = false;
 						canResetBestBuyPrice = true;
@@ -600,8 +610,8 @@ public class CotationService extends CommonService {
 	}
 
 
-	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
-		AssetConfig assetConfig = cryptobotRepository.getAssetConfigForCotation(cotation);		
+	public AssetConfig getAssetConfigForCotation(Cotation cotation, ModeEval modeEval) {
+		AssetConfig assetConfig = cryptobotRepository.getAssetConfigForCotation(cotation, modeEval);		
 		return assetConfig;
 	}
 	

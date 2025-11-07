@@ -19,6 +19,7 @@ import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Position;
 import net.jmb.cryptobot.data.entity.Trade;
+import net.jmb.cryptobot.data.enums.ModeEval;
 import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.data.repository.AssetRepository;
@@ -77,19 +78,28 @@ public abstract class TradeService extends CommonService {
 	
 	protected abstract List<Trade> addUnknownTrades(Asset asset);
 	
-	
+
 	public synchronized void init() throws Exception {		
 		lock();
 		Date now = new Date();
-		Date _48hBeforeNow = PeriodUtil.previousDateForPeriod(now, Period._48h);
+		Date delai = PeriodUtil.previousDateForPeriod(now, Period._48h);
 		if (canExchange()) {
 			registerLastCotations();
 		}
 		if (symbol != null) {
+			
+			if (StringUtils.isBlank(initDate)) {
+				Trade lastTrade = cryptobotRepository.getLastBuyTradeForAsset(symbol);
+				if (lastTrade != null) {
+					initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(lastTrade.getTime());
+				}
+			}
 			AssetConfig assetConfig = null;
-			Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
-			if (lastRatedCotation != null && lastRatedCotation.getDatetime().after(_48hBeforeNow)) {
-				assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation);				
+			if (StringUtils.isBlank(initDate)) {			
+				Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
+				if (lastRatedCotation != null && lastRatedCotation.getDatetime().after(delai)) {
+					assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);				
+				}
 			}
 			if (assetConfig == null || StringUtils.isNotBlank(initDate)) {
 				evaluateLastCotations();

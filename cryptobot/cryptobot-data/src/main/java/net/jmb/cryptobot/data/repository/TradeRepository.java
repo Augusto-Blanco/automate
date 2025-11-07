@@ -17,6 +17,8 @@ public interface TradeRepository extends JpaRepository<Trade, Long>, JpaSpecific
 
 	List<Trade> findByAssetIdAndStateInOrderByTime(Long id, List<String> states);
 	
+	Trade findFirstBySymbolAndSideOrderByTimeDesc(String symbol, String side);
+	
 	
 	@Query(
 		"select t from Trade t "

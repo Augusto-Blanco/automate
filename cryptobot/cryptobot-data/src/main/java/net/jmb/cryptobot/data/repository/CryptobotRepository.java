@@ -1,5 +1,6 @@
 package net.jmb.cryptobot.data.repository;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -12,6 +13,8 @@ import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Trade;
+import net.jmb.cryptobot.data.enums.ModeEval;
+import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.util.PeriodUtil;
 
@@ -150,27 +153,30 @@ public class CryptobotRepository extends GenericRepository {
 	}
 		
 	
-	public AssetConfig getAssetConfigForCotation(Cotation cotation) {
+	public AssetConfig getAssetConfigForCotation(Cotation cotation, ModeEval modeEval) {
 		AssetConfig assetConfig = null;
 		List<AssetConfig> configList = assetConfigRepository.findBySymbolAndDate(cotation.getSymbol(), cotation.getDatetime());
-		if (configList != null && configList.size() > 0) {			
+		configList.sort((asset1, asset2) -> -1 * asset1.getAnalysisPeriodEnum().compareTo(asset2.getAnalysisPeriodEnum()));
+		
+		if (configList != null && configList.size() > 0) {
+			if (modeEval != ModeEval.TRADE) {
+				assetConfig = configList.get(0);
+				return assetConfig;
+			}
 			for (AssetConfig wAssetConfig : configList) {
+				boolean isMaxVarHigh100 = wAssetConfig.getMaxVarHigh().compareTo(BigDecimal.valueOf(99.99d)) > 0;
+				boolean isMaxVarLow100 = wAssetConfig.getMaxVarLow().compareTo(BigDecimal.valueOf(99.99d)) > 0;
 				if (assetConfig == null) {
 					assetConfig = new AssetConfig().symbol(wAssetConfig.getSymbol()).maxVarHigh(wAssetConfig.getMaxVarHigh()).maxVarLow(wAssetConfig.getMaxVarLow())
 							.stopLoss(wAssetConfig.getStopLoss()).startTime(wAssetConfig.getStartTime()).endTime(wAssetConfig.getEndTime()).analysisPeriod(wAssetConfig.getAnalysisPeriod());
 				} else {
-					if (assetConfig.getMaxVarHigh().compareTo(wAssetConfig.getMaxVarHigh()) > 0) {
+					if (!isMaxVarHigh100 && assetConfig.getMaxVarHigh().compareTo(wAssetConfig.getMaxVarHigh()) > 0) {
 						assetConfig.maxVarHigh(wAssetConfig.getMaxVarHigh());
 					}
-					if (assetConfig.getMaxVarLow().compareTo(wAssetConfig.getMaxVarLow()) < 0) {
+					boolean isConfigLow100 = assetConfig.getMaxVarLow().compareTo(BigDecimal.valueOf(99.99d)) > 0;
+					if (!isMaxVarLow100 && (isConfigLow100 || assetConfig.getMaxVarLow().compareTo(wAssetConfig.getMaxVarLow()) < 0)) {
 						assetConfig.maxVarLow(wAssetConfig.getMaxVarLow());
 					}
-					if (assetConfig.getAnalysisPeriodEnum().compareTo(wAssetConfig.getAnalysisPeriodEnum()) < 0) {
-						assetConfig.analysisPeriod(wAssetConfig.getAnalysisPeriod());
-					}
-					if (assetConfig.getStartTime().compareTo(wAssetConfig.getStartTime()) > 0) {
-						assetConfig.startTime(wAssetConfig.getStartTime());
-					}					
 				}
 			}
 		}
@@ -215,8 +221,10 @@ public class CryptobotRepository extends GenericRepository {
 		return cotation;
 	}
 	
-
-
+	public Trade getLastBuyTradeForAsset(String symbol) {
+		Trade lastTrade = tradeRepository.findFirstBySymbolAndSideOrderByTimeDesc(symbol, OrderSide.BUY.name());
+		return lastTrade;
+	}
 	
 	
 	public AssetRepository getAssetRepository() {

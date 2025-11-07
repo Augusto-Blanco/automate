@@ -18,6 +18,7 @@ import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.entity.Position;
 import net.jmb.cryptobot.data.entity.Trade;
+import net.jmb.cryptobot.data.enums.ModeEval;
 import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.OrderState;
 import net.jmb.cryptobot.data.enums.Period;
@@ -61,10 +62,10 @@ public class MexcTradeService extends TradeService {
 					if (lastCotations != null && lastCotations.size() > 0) {
 						Cotation cotation = lastCotations.get(lastCotations.size() - 1);
 						Cotation previousCotation = (lastCotations.size() > 1) ? lastCotations.get(lastCotations.size() - 2) : null;
-						AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation);		
+						AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation, ModeEval.TRADE);
 						getLogger().info("-- Evaluate trade --");
-						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.realEval(true));
-						
+						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.TRADE));
+						boolean isBuyKO = false;
 						if (cotation != null && (cotation.isBuyFlag() || cotation.isSellFlag())) {
 							MexcAccountInfo accountInfos = restClientService.getAccountInfos();
 							Double freeQuantity = getFreeQuantity(symbol, accountInfos);							
@@ -72,14 +73,11 @@ public class MexcTradeService extends TradeService {
 								Double freeAmount = getFreeQuantity(asset.getPair(), accountInfos);
 								Double maxInvest = getDesiredAmountToBuy(asset, freeAmount);
 								Double lastPrice = getLastPrice(asset);
-								if (maxInvest > 50d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
+								if (maxInvest > 10d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
 									Double quantity = maxInvest / lastPrice; 
 									trade = sendOrder(asset, OrderSide.BUY, quantity, lastPrice);			
 								} else {
-									cotation.flagBuy(null).currentSide(OrderSide.SELL).quantity(0d);
-									if (previousCotation != null) {
-										cotation.buyPrice(previousCotation.getBuyPrice());
-									}
+									isBuyKO = true;									
 								}
 							} else if (cotation.isSellFlag()) {								
 								Double lastPrice = getLastPrice(asset);
@@ -93,9 +91,16 @@ public class MexcTradeService extends TradeService {
 									trade = sendOrder(asset, OrderSide.SELL, freeQuantity, lastPrice);
 								}
 							}
-						}						
+						}
+						assetConfig = cotationService.getAssetConfigForCotation(cotation, ModeEval.RECORD);
+						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.RECORD));
 						if (trade != null) {
 							super.registerTradeForCotation(trade, cotation);
+						} else if (isBuyKO) {
+							cotation.flagBuy(null).currentSide(OrderSide.SELL).quantity(0d);
+							if (previousCotation != null) {
+								cotation.buyPrice(previousCotation.getBuyPrice());
+							}
 						}
 					}
 				}
