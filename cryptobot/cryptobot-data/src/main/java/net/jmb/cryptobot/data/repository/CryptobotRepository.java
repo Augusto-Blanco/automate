@@ -170,7 +170,8 @@ public class CryptobotRepository extends GenericRepository {
 					assetConfig = new AssetConfig().symbol(wAssetConfig.getSymbol()).maxVarHigh(wAssetConfig.getMaxVarHigh()).maxVarLow(wAssetConfig.getMaxVarLow())
 							.stopLoss(wAssetConfig.getStopLoss()).startTime(wAssetConfig.getStartTime()).endTime(wAssetConfig.getEndTime()).analysisPeriod(wAssetConfig.getAnalysisPeriod());
 				} else {
-					if (!isMaxVarHigh100 && assetConfig.getMaxVarHigh().compareTo(wAssetConfig.getMaxVarHigh()) > 0) {
+					boolean isConfigHigh100 = assetConfig.getMaxVarHigh().compareTo(BigDecimal.valueOf(99.99d)) > 0;
+					if (!isMaxVarHigh100 && isConfigHigh100) {
 						assetConfig.maxVarHigh(wAssetConfig.getMaxVarHigh());
 					}
 					boolean isConfigLow100 = assetConfig.getMaxVarLow().compareTo(BigDecimal.valueOf(99.99d)) > 0;

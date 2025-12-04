@@ -240,9 +240,11 @@ public abstract class TradeService extends CommonService {
 	public synchronized void resetEvaluations() {	
 		Asset asset = getAsset();
 		if (soldWhenReset) {
+			getLogger().info("-- Sold position for " + symbol + " --\r\n");
 			soldPosition(asset, null);
 		}
-		cotationService.resetEvaluationForAsset(asset, Period._48h);		
+		getLogger().info("-- Reset Evaluation for " + symbol + " --\r\n");
+		cotationService.resetEvaluationForAsset(asset, Period._12j);		
 	}
 	
 

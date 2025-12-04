@@ -55,10 +55,17 @@ public class CotationService extends CommonService {
 	
 	@Transactional
 	public Cotation resetEvaluationForAsset(Asset asset, Period period) {
+		Cotation refCotation = null;
 		if (period == null) {
 			period = Period._48h;
 		}
-		Cotation refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), PeriodUtil.previousDateForPeriod(new Date(), period));
+		Date today = new Date();
+		Date startDate = PeriodUtil.previousDateForPeriod(today, period);
+		if (period.compareTo(Period._48h) > 0) {
+			refCotation = cryptobotRepository.getMinCotationBetweenDates(asset.getSymbol(), startDate, PeriodUtil.previousDateForPeriod(today, Period._48h));
+		} else {
+			refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), startDate);
+		}
 		if (refCotation != null) {
 			return evaluateCotations(asset, refCotation.getDatetime(), true);
 		}

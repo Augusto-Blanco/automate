@@ -61,11 +61,10 @@ public class MexcTradeService extends TradeService {
 					lastCotations = cotationService.getCryptobotRepository().getAllCotationsSinceLastRated(symbol);					
 					if (lastCotations != null && lastCotations.size() > 0) {
 						Cotation cotation = lastCotations.get(lastCotations.size() - 1);
-						Cotation previousCotation = (lastCotations.size() > 1) ? lastCotations.get(lastCotations.size() - 2) : null;
 						AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation, ModeEval.TRADE);
+						getLogger().info("");
 						getLogger().info("-- Evaluate trade --");
 						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.TRADE));
-						boolean isBuyKO = false;
 						if (cotation != null && (cotation.isBuyFlag() || cotation.isSellFlag())) {
 							MexcAccountInfo accountInfos = restClientService.getAccountInfos();
 							Double freeQuantity = getFreeQuantity(symbol, accountInfos);							
@@ -76,9 +75,7 @@ public class MexcTradeService extends TradeService {
 								if (maxInvest > 10d && lastPrice != null && lastPrice > 0d && lastPrice <= 1.001 * cotation.getPrice()) {
 									Double quantity = maxInvest / lastPrice; 
 									trade = sendOrder(asset, OrderSide.BUY, quantity, lastPrice);			
-								} else {
-									isBuyKO = true;									
-								}
+								} 
 							} else if (cotation.isSellFlag()) {								
 								Double lastPrice = getLastPrice(asset);
 								if (lastPrice > 0d && freeQuantity > 0d) {
@@ -96,12 +93,8 @@ public class MexcTradeService extends TradeService {
 						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.RECORD));
 						if (trade != null) {
 							super.registerTradeForCotation(trade, cotation);
-						} else if (isBuyKO) {
-							cotation.flagBuy(null).currentSide(OrderSide.SELL).quantity(0d);
-							if (previousCotation != null) {
-								cotation.buyPrice(previousCotation.getBuyPrice());
-							}
 						}
+						getLogger().info("");
 					}
 				}
 			}
