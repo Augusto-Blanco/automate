@@ -88,6 +88,8 @@ public class CotationService extends CommonService {
 			boolean longTimeAnalysis =  true;			
 			refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef, longTimeAnalysis);
 			
+			cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), dateRef, null);
+			
 			while (analysisPeriod != null && analysisPeriod.compareTo(Period._24h) >= 0) {
 				if (analysisPeriod.compareTo(Period._6j) < 0) {
 					longTimeAnalysis = false;
@@ -153,7 +155,7 @@ public class CotationService extends CommonService {
 
 					while (cotationGrid != null && cotationGrid.size() > 1) {
 						AssetConfig bestAssetConfig = evaluateAssetConfigForCotations(cotationGrid, asset, longTimeAnalysis).analysisPeriod(analysisPeriod.val);
-						cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), bestAssetConfig.getEndTime(), analysisPeriod.val);
+//						cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), bestAssetConfig.getEndTime(), analysisPeriod.val);
 						cryptobotRepository.getAssetConfigRepository().save(bestAssetConfig);
 						assetConfigList.add(bestAssetConfig);
 						cotation = cotationGrid.get(cotationGrid.size() - 1);
