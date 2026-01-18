@@ -35,6 +35,9 @@ public abstract class TradeService extends CommonService {
 	CotationService cotationService = null;	
 	
 	@Autowired
+	CotationEvaluationService evaluationService;
+	
+	@Autowired
 	AssetRepository assetRepository;
 	
 	@Autowired
@@ -86,12 +89,16 @@ public abstract class TradeService extends CommonService {
 		if (canExchange()) {
 			registerLastCotations();
 		}
-		if (symbol != null) {
-			
-			if (StringUtils.isBlank(initDate)) {
-				Trade lastTrade = cryptobotRepository.getLastBuyTradeForAsset(symbol);
-				if (lastTrade != null) {
-					initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(lastTrade.getTime());
+		if (symbol != null) {			
+			Asset asset = getAsset();			
+			if (StringUtils.isBlank(initDate)) {				
+				List<AssetConfig> assetConfigs = cryptobotRepository.getAssetConfigRepository().findBySymbolAndDate(symbol, now);
+				if (assetConfigs != null) {
+					for (AssetConfig assetConfig : assetConfigs) {
+						if (assetConfig.getAnalysisPeriod().equals(asset.getAnalysisPeriod())) {
+							initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(assetConfig.getEndTime());
+						}
+					}
 				}
 			}
 			AssetConfig assetConfig = null;
@@ -152,7 +159,7 @@ public abstract class TradeService extends CommonService {
 	@Scheduled(cron = "0 7 * * * *")
 	public synchronized void checkAndResetLossForCotations() throws Exception {
 		Asset asset = getAsset();
-		cotationService.checkAndResetLossForCotations(asset);
+		evaluationService.checkAndResetLossForCotations(asset);
 	}
 		
 	

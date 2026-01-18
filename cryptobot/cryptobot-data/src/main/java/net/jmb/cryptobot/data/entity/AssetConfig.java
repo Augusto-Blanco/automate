@@ -127,9 +127,9 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 
 	@Override
 	public String toString() {
-		SimpleDateFormat df = new SimpleDateFormat("dd/MM HH:mm");
+		SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 		return "AssetConfig " + symbol + " [maxVarLow=" + maxVarLow + ", maxVarHigh=" + maxVarHigh + ", stopLoss=" + stopLoss 
-							+ ", start=" + df.format(startTime) + ", end=" + df.format(endTime) + "]";
+							+ ", start=" + df.format(startTime) + ", end=" + df.format(endTime) + ", periode=" + analysisPeriod + "]";
 	}
 
 	
@@ -169,6 +169,8 @@ public class AssetConfig extends AbstractEntity implements Serializable {
 	public Period getAnalysisPeriodEnum() {
 		return Period.get(analysisPeriod);
 	}
+	
+	
 
 
 

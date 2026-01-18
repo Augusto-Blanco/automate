@@ -64,7 +64,7 @@ public class MexcTradeService extends TradeService {
 						AssetConfig assetConfig = cotationService.getAssetConfigForCotation(cotation, ModeEval.TRADE);
 						getLogger().info("");
 						getLogger().info("-- Evaluate trade --");
-						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.TRADE));
+						cotation = evaluationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.TRADE));
 						if (cotation != null && (cotation.isBuyFlag() || cotation.isSellFlag())) {
 							MexcAccountInfo accountInfos = restClientService.getAccountInfos();
 							Double freeQuantity = getFreeQuantity(symbol, accountInfos);							
@@ -90,7 +90,7 @@ public class MexcTradeService extends TradeService {
 							}
 						}
 						assetConfig = cotationService.getAssetConfigForCotation(cotation, ModeEval.RECORD);
-						cotation = cotationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.RECORD));
+						cotation = evaluationService.evaluateTradesForCotations(lastCotations, asset, assetConfig.modeEval(ModeEval.RECORD));
 						if (trade != null) {
 							super.registerTradeForCotation(trade, cotation);
 						}
