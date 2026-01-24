@@ -77,11 +77,11 @@ public class CotationEvaluationService extends CommonService {
 	
 	@Transactional
 	private void resetAssetConfigs(List<AssetConfig> assetConfigList) {		
+		getLogger().info("** resetAssetConfigs **");
 		for (AssetConfig assetConfig : assetConfigList) {
 			AssetConfigRepository assetConfigRepository = cryptobotRepository.getAssetConfigRepository();
 			assetConfigRepository.deleteDateGreaterOrEquals(assetConfig.getSymbol(), assetConfig.getEndTime(), assetConfig.getAnalysisPeriod());
 			assetConfigRepository.save(assetConfig);
-			getLogger().info("");
 			getLogger().info(assetConfig.toString());
 		}		
 		getLogger().info("");
@@ -380,7 +380,7 @@ public class CotationEvaluationService extends CommonService {
 		}
 	}
 	
-	public void checkAndResetLossForCotation(Asset asset, Cotation cotation) {
+	private void checkAndResetLossForCotation(Asset asset, Cotation cotation) {
 
 		if (asset != null && cotation != null) {
 			

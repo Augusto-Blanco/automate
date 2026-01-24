@@ -46,8 +46,6 @@ public class MexcTradeService extends TradeService {
 	}
 	
 	
-	
-	
 	@Scheduled(cron = "${cryptobot.trade.evaluation.scheduler.cron}")
 	@Transactional
 	public synchronized void evaluateTradeForLastCotation() throws Exception {

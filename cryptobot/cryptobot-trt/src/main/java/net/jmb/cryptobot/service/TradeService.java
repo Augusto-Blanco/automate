@@ -89,26 +89,23 @@ public abstract class TradeService extends CommonService {
 		if (canExchange()) {
 			registerLastCotations();
 		}
-		if (symbol != null) {			
-			Asset asset = getAsset();			
-			if (StringUtils.isBlank(initDate)) {				
-				List<AssetConfig> assetConfigs = cryptobotRepository.getAssetConfigRepository().findBySymbolAndDate(symbol, now);
-				if (assetConfigs != null) {
-					for (AssetConfig assetConfig : assetConfigs) {
-						if (assetConfig.getAnalysisPeriod().equals(asset.getAnalysisPeriod())) {
-							initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(assetConfig.getEndTime());
-						}
+		if (symbol != null) {
+			AssetConfig assetConfig = null;
+			if (StringUtils.isBlank(initDate)) {
+				SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+				Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
+				if (lastRatedCotation == null) {
+					initDate = dateFormat.format(delai);
+				} else {
+					assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);
+					if (assetConfig == null) {
+						initDate = dateFormat.format(lastRatedCotation.getDatetime());
+					} else if (!assetConfig.getEndTime().after(delai)) {
+						initDate = dateFormat.format(assetConfig.getEndTime());
 					}
 				}
 			}
-			AssetConfig assetConfig = null;
-			if (StringUtils.isBlank(initDate)) {			
-				Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
-				if (lastRatedCotation != null && lastRatedCotation.getDatetime().after(delai)) {
-					assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);				
-				}
-			}
-			if (assetConfig == null || StringUtils.isNotBlank(initDate)) {
+			if (StringUtils.isNotBlank(initDate)) {
 				evaluateLastCotations();
 			}
 		}		
@@ -141,21 +138,19 @@ public abstract class TradeService extends CommonService {
 	}
 	
 	
-	
-	@Transactional
 	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")
 	public synchronized Cotation evaluateLastCotations() throws Exception {
 		Asset asset = getAsset();
 		if (asset != null) {
 			Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
 			Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
+			initDate = null;
 			return lastCotation;
 		}
 		return null;
 	}
 	
 	
-	@Transactional	
 	@Scheduled(cron = "0 7 * * * *")
 	public synchronized void checkAndResetLossForCotations() throws Exception {
 		Asset asset = getAsset();
@@ -241,8 +236,7 @@ public abstract class TradeService extends CommonService {
 		getLogger().info(position != null ? position.toString() : "");
 	}
 	
-	
-	@Transactional
+
 	@Scheduled(cron = "${cryptobot.reset.evaluation.scheduler.cron}")  
 	public synchronized void resetEvaluations() {	
 		Asset asset = getAsset();

@@ -2,6 +2,7 @@ package net.jmb.cryptobot.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,20 +73,15 @@ public class CotationService extends CommonService {
 
 	public Cotation evaluateCotations(Asset asset, Date dateRef, boolean reset) {
 		
-		Cotation refCotation = null;
-		
+		Cotation refCotation = null;		
 		if (asset != null && asset.getSymbol() != null) {
-
 			String symbol = asset.getSymbol();
 			Period analysisPeriod = asset.getAnalysisPeriodEnum();
 			if (analysisPeriod == null) {
 				analysisPeriod = Period._6j;
 			}		
 			boolean longTimeAnalysis =  true;			
-			refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef, longTimeAnalysis);
-			
-			cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), dateRef, null);
-			
+			refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef, longTimeAnalysis);			
 			while (analysisPeriod != null && analysisPeriod.compareTo(Period._24h) >= 0) {
 				if (analysisPeriod.compareTo(Period._6j) < 0) {
 					longTimeAnalysis = false;
@@ -108,9 +104,7 @@ public class CotationService extends CommonService {
 	protected Cotation initEvaluationForAnalysisPeriod(Asset asset, Cotation refCotation, Period analysisPeriod, boolean longTimeAnalysis, boolean reset) {
 		
 		Cotation cotation = null;
-		
 		if (asset != null && asset.getSymbol() != null) {
-			
 			Period frequencyPeriod = Period._1h;
 			if (analysisPeriod.compareTo(Period._2M) >= 0) {
 				frequencyPeriod = Period._6j;
@@ -121,12 +115,9 @@ public class CotationService extends CommonService {
 			} else if (analysisPeriod.compareTo(Period._48h) >= 0) {
 				frequencyPeriod = Period._6h;
 			}
-
 			if (refCotation != null) {
-
 				Date dateRef = refCotation.getDatetime();
 				Date startDate = PeriodUtil.previousDateForPeriod(dateRef, analysisPeriod);
-				
 				// pour initialiser l'achat on prend 2 fois la période d'analyse afin de déterminer le moment optimum d'achat AVANT le début de l'analyse
 				Date prevDate = PeriodUtil.previousDateForPeriod(startDate, analysisPeriod);
 				if (prevDate != null) {
@@ -135,16 +126,11 @@ public class CotationService extends CommonService {
 						startDate = minCotation.getDatetime();
 					}
 				}				
-				
 				List<Cotation> dbCotations = cryptobotRepository.getCotationsSinceDate(asset.getSymbol(), startDate, longTimeAnalysis);				
-				
 				if (dbCotations != null && dbCotations.size() > 0) {
-					
 					List<AssetConfig> assetConfigList = new ArrayList<AssetConfig>();
-					
 					// traitement sur liste copiée car pas de màj en base
-					List<Cotation> cotations = new ArrayList<>(dbCotations.stream().map(Cotation::duplicate).toList()); 
-					
+					List<Cotation> cotations = new ArrayList<>(dbCotations.stream().map(Cotation::duplicate).toList());
 					// grille d'analyse : celle qui précède juste la cotation de référence
 					List<Cotation> cotationGrid = null;
 					int refIndex = cotations.indexOf(refCotation);	
@@ -152,11 +138,8 @@ public class CotationService extends CommonService {
 						cotations.get(0).resetEvaluation();	
 						cotationGrid = cotations.subList(0, refIndex + 1);					
 					}
-
 					while (cotationGrid != null && cotationGrid.size() > 1) {
 						AssetConfig bestAssetConfig = evaluateAssetConfigForCotations(cotationGrid, asset, longTimeAnalysis).analysisPeriod(analysisPeriod.val);
-//						cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), bestAssetConfig.getEndTime(), analysisPeriod.val);
-						cryptobotRepository.getAssetConfigRepository().save(bestAssetConfig);
 						assetConfigList.add(bestAssetConfig);
 						cotation = cotationGrid.get(cotationGrid.size() - 1);
 						cotationGrid = getCotationGridOnPeriodForward(cotation, cotations, frequencyPeriod);
@@ -165,7 +148,6 @@ public class CotationService extends CommonService {
 							cotationGrid = getCotationGridOnPeriodBackward(cotation, cotations, analysisPeriod);						
 						}
 					}
-					
 					// recalcul en base à partir des évaluations précédentes et de la cotation de ref					
 					if (longTimeAnalysis) {
 						dbCotations = cryptobotRepository.getCotationsSinceDate(asset.getSymbol(), startDate);
@@ -423,7 +405,7 @@ public class CotationService extends CommonService {
 		}
 		Date previousDate = PeriodUtil.previousDateForPeriod(refCotation.getDatetime(), period);
 		if (previousDate != null) {
-			startIndex = findIndexForDate(allCotations, previousDate, refCotation.getSymbol());
+			startIndex = findIndexForDate(allCotations, previousDate, refCotation.getSymbol(), false);
 		}
 		if (startIndex < 0) {
 			startIndex = 0;
@@ -440,11 +422,16 @@ public class CotationService extends CommonService {
 		if (startIndex >= 0) {
 			Date nextDate = PeriodUtil.nextDateForPeriod(refCotation.getDatetime(), period);
 			if (nextDate != null) {
-				endIndex = findIndexForDate(allCotations, nextDate, refCotation.getSymbol());
+				endIndex = findIndexForDate(allCotations, nextDate, refCotation.getSymbol(), true);
 			}
-			List<Cotation> subList = allCotations.subList(startIndex, endIndex + 1);
-			subList.removeIf(cotation -> !cotation.getSymbol().equals(refCotation.getSymbol()));
-			return subList;
+			getLogger().info("** cotation Grid On Period Forward " + period.val + " **");
+			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+			getLogger().info("Size :" + allCotations.size() + ", nextDate: " + df.format(nextDate) + ", startIndex: " + startIndex + ", endIndex: " + endIndex);
+			if (endIndex >= startIndex) {
+				List<Cotation> subList = allCotations.subList(startIndex, endIndex + 1);
+				subList.removeIf(cotation -> !cotation.getSymbol().equals(refCotation.getSymbol()));
+				return subList;
+			}
 		}
 		return null;
 	}
@@ -459,7 +446,7 @@ public class CotationService extends CommonService {
 		}
 		Date previousDate = PeriodUtil.previousDateForPeriod(refCotation.getDatetime(), period);
 		if (previousDate != null) {
-			index = findIndexForDate(allCotations, previousDate, refCotation.getSymbol());
+			index = findIndexForDate(allCotations, previousDate, refCotation.getSymbol(), false);
 		}
 		if (index < 0) {
 			index = 0;
@@ -468,25 +455,32 @@ public class CotationService extends CommonService {
 	}
 
 	
-	private int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
+	private int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol, boolean forward) {
 		int index = -1;
 		if (refDate != null && cotations != null && symbol != null) {
 			for (int i = 0; i < cotations.size(); i++) {
 				Cotation cotation = cotations.get(i);
 				if (symbol.equals(cotation.getSymbol())) {
-					if (refDate.compareTo(cotation.getDatetime()) >= 0) {
-						index = i; 
+					if (forward) {
+						if (refDate.compareTo(cotation.getDatetime()) <= 0) {
+							index = i;
+							break;
+						}
 					} else {
-						break;
-					}
+						if (refDate.compareTo(cotation.getDatetime()) >= 0) {
+							index = i; 
+						} else {
+							break;
+						}
+					}					
 				}
 			}
 		}		
 		return index;
 	}
 	
-	public Cotation findCotationForDate(List<Cotation> cotations, Date refDate, String symbol) {
-		int index = findIndexForDate(cotations, refDate, symbol);
+	public Cotation findCotationForDate(List<Cotation> cotations, Date refDate, String symbol, boolean forward) {
+		int index = findIndexForDate(cotations, refDate, symbol, forward);
 		if (index > -1) {
 			return cotations.get(index);
 		}
