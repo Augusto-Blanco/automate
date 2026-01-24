@@ -84,8 +84,6 @@ public class CotationService extends CommonService {
 			boolean longTimeAnalysis =  true;			
 			refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef, longTimeAnalysis);
 			
-			cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), dateRef, null);
-			
 			while (analysisPeriod != null && analysisPeriod.compareTo(Period._24h) >= 0) {
 				if (analysisPeriod.compareTo(Period._6j) < 0) {
 					longTimeAnalysis = false;
