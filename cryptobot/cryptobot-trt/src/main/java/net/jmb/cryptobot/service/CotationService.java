@@ -153,8 +153,6 @@ public class CotationService extends CommonService {
 
 					while (cotationGrid != null && cotationGrid.size() > 1) {
 						AssetConfig bestAssetConfig = evaluateAssetConfigForCotations(cotationGrid, asset, longTimeAnalysis).analysisPeriod(analysisPeriod.val);
-//						cryptobotRepository.getAssetConfigRepository().deleteDateGreaterOrEquals(asset.getSymbol(), bestAssetConfig.getEndTime(), analysisPeriod.val);
-						cryptobotRepository.getAssetConfigRepository().save(bestAssetConfig);
 						assetConfigList.add(bestAssetConfig);
 						cotation = cotationGrid.get(cotationGrid.size() - 1);
 						cotationGrid = getCotationGridOnPeriodForward(cotation, cotations, frequencyPeriod);
@@ -438,11 +436,13 @@ public class CotationService extends CommonService {
 		if (startIndex >= 0) {
 			Date nextDate = PeriodUtil.nextDateForPeriod(refCotation.getDatetime(), period);
 			if (nextDate != null) {
-				endIndex = findIndexForDate(allCotations, nextDate, refCotation.getSymbol());
+				endIndex = findNextIndexForDate(allCotations, nextDate, refCotation.getSymbol());
 			}
-			List<Cotation> subList = allCotations.subList(startIndex, endIndex + 1);
-			subList.removeIf(cotation -> !cotation.getSymbol().equals(refCotation.getSymbol()));
-			return subList;
+			if (endIndex >= startIndex) {
+				List<Cotation> subList = allCotations.subList(startIndex, endIndex + 1);
+				subList.removeIf(cotation -> !cotation.getSymbol().equals(refCotation.getSymbol()));
+				return subList;
+			}
 		}
 		return null;
 	}
@@ -465,6 +465,21 @@ public class CotationService extends CommonService {
 		return index;	
 	}
 
+	private int findNextIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
+		int index = -1;
+		if (refDate != null && cotations != null && symbol != null) {
+			for (int i = 0; i < cotations.size(); i++) {
+				Cotation cotation = cotations.get(i);
+				if (symbol.equals(cotation.getSymbol())) {
+					if (cotation.getDatetime().compareTo(refDate) >= 0) {
+						index = i;
+						break;
+					}
+				}
+			}
+		}		
+		return index;
+	}
 	
 	private int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
 		int index = -1;

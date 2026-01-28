@@ -89,16 +89,13 @@ public abstract class TradeService extends CommonService {
 		if (canExchange()) {
 			registerLastCotations();
 		}
-		if (symbol != null) {			
-			Asset asset = getAsset();			
-			if (StringUtils.isBlank(initDate)) {				
-				List<AssetConfig> assetConfigs = cryptobotRepository.getAssetConfigRepository().findBySymbolAndDate(symbol, now);
-				if (assetConfigs != null) {
-					for (AssetConfig assetConfig : assetConfigs) {
-						if (assetConfig.getAnalysisPeriod().equals(asset.getAnalysisPeriod())) {
-							initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(assetConfig.getEndTime());
-						}
-					}
+		if (symbol != null) {
+			
+			if (StringUtils.isBlank(initDate)) {
+				Trade lastTrade = cryptobotRepository.getLastBuyTradeForAsset(symbol);
+				Date prevDateLimite = PeriodUtil.previousDateForPeriod(now, getAsset().getAnalysisPeriodEnum());
+				if (lastTrade != null && lastTrade.getTime().compareTo(prevDateLimite) >= 0) {
+					initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(lastTrade.getTime());
 				}
 			}
 			AssetConfig assetConfig = null;
@@ -142,7 +139,6 @@ public abstract class TradeService extends CommonService {
 	
 	
 	
-	@Transactional
 	@Scheduled(cron = "${cryptobot.cotation.evaluation.scheduler.cron}")
 	public synchronized Cotation evaluateLastCotations() throws Exception {
 		Asset asset = getAsset();

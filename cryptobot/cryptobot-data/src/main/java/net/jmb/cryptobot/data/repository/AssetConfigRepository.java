@@ -23,7 +23,8 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 		+   "where a.symbol = :symbol and a.endTime <= :dateRef "
 		+ 	"and a.endTime = ( "
 		+   "	select max(b.endTime) from AssetConfig b "
-		+ 	"	where b.symbol = :symbol and b.analysisPeriod  = a.analysisPeriod and b.endTime <= :dateRef "
+		+ 	"	where b.symbol = :symbol and (b.analysisPeriod = a.analysisPeriod or (b.analysisPeriod is NULL and a.analysisPeriod IS NULL))"
+		+	"	and b.endTime <= :dateRef "
 		+	")";
 
 	
