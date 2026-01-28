@@ -89,23 +89,25 @@ public abstract class TradeService extends CommonService {
 		if (canExchange()) {
 			registerLastCotations();
 		}
-		if (symbol != null) {
-			
+		if (symbol != null) {			
 			if (StringUtils.isBlank(initDate)) {
 				Trade lastTrade = cryptobotRepository.getLastBuyTradeForAsset(symbol);
 				Date prevDateLimite = PeriodUtil.previousDateForPeriod(now, getAsset().getAnalysisPeriodEnum());
-				if (lastTrade != null && lastTrade.getTime().compareTo(prevDateLimite) >= 0) {
+				if (lastTrade != null && lastTrade.getTime().after(prevDateLimite)) {
 					initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(lastTrade.getTime());
 				}
 			}
-			AssetConfig assetConfig = null;
+			Cotation lastRatedCotation = null;
 			if (StringUtils.isBlank(initDate)) {			
-				Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
-				if (lastRatedCotation != null && lastRatedCotation.getDatetime().after(delai)) {
-					assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);				
+				lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
+				if (lastRatedCotation != null) {
+					AssetConfig assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);
+					if (assetConfig != null && assetConfig.getEndTime().before(delai)) {
+						lastRatedCotation = null;
+					}
 				}
 			}
-			if (assetConfig == null || StringUtils.isNotBlank(initDate)) {
+			if (lastRatedCotation == null || StringUtils.isNotBlank(initDate)) {
 				evaluateLastCotations();
 			}
 		}		
