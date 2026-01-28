@@ -147,6 +147,7 @@ public abstract class TradeService extends CommonService {
 		if (asset != null) {
 			Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
 			Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
+			initDate = null;
 			return lastCotation;
 		}
 		return null;
