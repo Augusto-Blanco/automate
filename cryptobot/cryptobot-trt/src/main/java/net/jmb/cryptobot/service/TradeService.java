@@ -89,23 +89,25 @@ public abstract class TradeService extends CommonService {
 		if (canExchange()) {
 			registerLastCotations();
 		}
-		if (symbol != null) {
-			AssetConfig assetConfig = null;
+		if (symbol != null) {			
 			if (StringUtils.isBlank(initDate)) {
-				SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-				Cotation lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
-				if (lastRatedCotation == null) {
-					initDate = dateFormat.format(delai);
-				} else {
-					assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);
-					if (assetConfig == null) {
-						initDate = dateFormat.format(lastRatedCotation.getDatetime());
-					} else if (!assetConfig.getEndTime().after(delai)) {
-						initDate = dateFormat.format(assetConfig.getEndTime());
+				Trade lastTrade = cryptobotRepository.getLastBuyTradeForAsset(symbol);
+				Date prevDateLimite = PeriodUtil.previousDateForPeriod(now, getAsset().getAnalysisPeriodEnum());
+				if (lastTrade != null && lastTrade.getTime().after(prevDateLimite)) {
+					initDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(lastTrade.getTime());
+				}
+			}
+			Cotation lastRatedCotation = null;
+			if (StringUtils.isBlank(initDate)) {			
+				lastRatedCotation = cryptobotRepository.getLastRatedCotation(symbol);
+				if (lastRatedCotation != null) {
+					AssetConfig assetConfig = cotationService.getAssetConfigForCotation(lastRatedCotation, ModeEval.EVAL);
+					if (assetConfig != null && assetConfig.getEndTime().before(delai)) {
+						lastRatedCotation = null;
 					}
 				}
 			}
-			if (StringUtils.isNotBlank(initDate)) {
+			if (lastRatedCotation == null || StringUtils.isNotBlank(initDate)) {
 				evaluateLastCotations();
 			}
 		}		

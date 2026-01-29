@@ -2,7 +2,6 @@ package net.jmb.cryptobot.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,7 +72,7 @@ public class CotationService extends CommonService {
 
 	public Cotation evaluateCotations(Asset asset, Date dateRef, boolean reset) {
 		
-		Cotation refCotation = null;		
+		Cotation refCotation = null;
 		if (asset != null && asset.getSymbol() != null) {
 			String symbol = asset.getSymbol();
 			Period analysisPeriod = asset.getAnalysisPeriodEnum();
@@ -81,7 +80,7 @@ public class CotationService extends CommonService {
 				analysisPeriod = Period._6j;
 			}		
 			boolean longTimeAnalysis =  true;			
-			refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef, longTimeAnalysis);			
+			refCotation = cryptobotRepository.getLastCotationBeforeDate(symbol, dateRef, longTimeAnalysis);
 			while (analysisPeriod != null && analysisPeriod.compareTo(Period._24h) >= 0) {
 				if (analysisPeriod.compareTo(Period._6j) < 0) {
 					longTimeAnalysis = false;
@@ -405,7 +404,7 @@ public class CotationService extends CommonService {
 		}
 		Date previousDate = PeriodUtil.previousDateForPeriod(refCotation.getDatetime(), period);
 		if (previousDate != null) {
-			startIndex = findIndexForDate(allCotations, previousDate, refCotation.getSymbol(), false);
+			startIndex = findIndexForDate(allCotations, previousDate, refCotation.getSymbol());
 		}
 		if (startIndex < 0) {
 			startIndex = 0;
@@ -422,11 +421,8 @@ public class CotationService extends CommonService {
 		if (startIndex >= 0) {
 			Date nextDate = PeriodUtil.nextDateForPeriod(refCotation.getDatetime(), period);
 			if (nextDate != null) {
-				endIndex = findIndexForDate(allCotations, nextDate, refCotation.getSymbol(), true);
+				endIndex = findNextIndexForDate(allCotations, nextDate, refCotation.getSymbol());
 			}
-			getLogger().info("** cotation Grid On Period Forward " + period.val + " **");
-			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-			getLogger().info("Size :" + allCotations.size() + ", nextDate: " + df.format(nextDate) + ", startIndex: " + startIndex + ", endIndex: " + endIndex);
 			if (endIndex >= startIndex) {
 				List<Cotation> subList = allCotations.subList(startIndex, endIndex + 1);
 				subList.removeIf(cotation -> !cotation.getSymbol().equals(refCotation.getSymbol()));
@@ -446,7 +442,7 @@ public class CotationService extends CommonService {
 		}
 		Date previousDate = PeriodUtil.previousDateForPeriod(refCotation.getDatetime(), period);
 		if (previousDate != null) {
-			index = findIndexForDate(allCotations, previousDate, refCotation.getSymbol(), false);
+			index = findIndexForDate(allCotations, previousDate, refCotation.getSymbol());
 		}
 		if (index < 0) {
 			index = 0;
@@ -454,33 +450,41 @@ public class CotationService extends CommonService {
 		return index;	
 	}
 
-	
-	private int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol, boolean forward) {
+	private int findNextIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
 		int index = -1;
 		if (refDate != null && cotations != null && symbol != null) {
 			for (int i = 0; i < cotations.size(); i++) {
 				Cotation cotation = cotations.get(i);
 				if (symbol.equals(cotation.getSymbol())) {
-					if (forward) {
-						if (refDate.compareTo(cotation.getDatetime()) <= 0) {
-							index = i;
-							break;
-						}
-					} else {
-						if (refDate.compareTo(cotation.getDatetime()) >= 0) {
-							index = i; 
-						} else {
-							break;
-						}
-					}					
+					if (cotation.getDatetime().compareTo(refDate) >= 0) {
+						index = i;
+						break;
+					}
 				}
 			}
 		}		
 		return index;
 	}
 	
-	public Cotation findCotationForDate(List<Cotation> cotations, Date refDate, String symbol, boolean forward) {
-		int index = findIndexForDate(cotations, refDate, symbol, forward);
+	private int findIndexForDate(List<Cotation> cotations, Date refDate, String symbol) {
+		int index = -1;
+		if (refDate != null && cotations != null && symbol != null) {
+			for (int i = 0; i < cotations.size(); i++) {
+				Cotation cotation = cotations.get(i);
+				if (symbol.equals(cotation.getSymbol())) {
+					if (refDate.compareTo(cotation.getDatetime()) >= 0) {
+						index = i; 
+					} else {
+						break;
+					}
+				}
+			}
+		}		
+		return index;
+	}
+	
+	public Cotation findCotationForDate(List<Cotation> cotations, Date refDate, String symbol) {
+		int index = findIndexForDate(cotations, refDate, symbol);
 		if (index > -1) {
 			return cotations.get(index);
 		}

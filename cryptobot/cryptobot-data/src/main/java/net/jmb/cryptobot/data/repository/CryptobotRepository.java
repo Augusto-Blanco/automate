@@ -156,7 +156,18 @@ public class CryptobotRepository extends GenericRepository {
 	public AssetConfig getAssetConfigForCotation(Cotation cotation, ModeEval modeEval) {
 		AssetConfig assetConfig = null;
 		List<AssetConfig> configList = assetConfigRepository.findBySymbolAndDate(cotation.getSymbol(), cotation.getDatetime());
-		configList.sort((asset1, asset2) -> -1 * asset1.getAnalysisPeriodEnum().compareTo(asset2.getAnalysisPeriodEnum()));
+		configList.sort((asset1, asset2) -> {
+			if (asset1.getAnalysisPeriodEnum() == null) {
+				if (asset2.getAnalysisPeriodEnum() == null) {
+					return -1 * asset1.getEndTime().compareTo(asset2.getEndTime());
+				}
+				return 1;
+			}
+			if (asset2.getAnalysisPeriodEnum() == null) {				
+				return -1;
+			}
+			return -1 * asset1.getAnalysisPeriodEnum().compareTo(asset2.getAnalysisPeriodEnum());
+		});
 		
 		if (configList != null && configList.size() > 0) {
 			if (modeEval != ModeEval.TRADE) {
