@@ -146,6 +146,7 @@ public abstract class TradeService extends CommonService {
 		if (asset != null) {
 			Date dateRef = StringUtils.isNotBlank(initDate) ? new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(initDate) : null;
 			Cotation lastCotation = cotationService.evaluateLastCotations(asset, dateRef);
+			resetEvaluations();
 			initDate = null;
 			return lastCotation;
 		}
@@ -239,15 +240,18 @@ public abstract class TradeService extends CommonService {
 	}
 	
 
-	@Scheduled(cron = "${cryptobot.reset.evaluation.scheduler.cron}")  
 	public synchronized void resetEvaluations() {	
 		Asset asset = getAsset();
-		if (soldWhenReset) {
-			getLogger().info("-- Sold position for " + symbol + " --\r\n");
-			soldPosition(asset, null);
+		OrderSide side = OrderSide.BUY;
+		Date dateTrade = null;
+		Trade lastTrade = cryptobotRepository.getLastTradeForAsset(symbol);
+		if (lastTrade != null) {
+			dateTrade = lastTrade.getTime();
+			if (lastTrade.getOrderSideEnum() == OrderSide.SELL) {
+				side = OrderSide.SELL;
+			}
 		}
-		getLogger().info("-- Reset Evaluation for " + symbol + " --\r\n");
-		cotationService.resetEvaluationForAsset(asset, Period._12j);		
+		cotationService.resetEvaluationForAsset(asset, side, dateTrade);		
 	}
 	
 

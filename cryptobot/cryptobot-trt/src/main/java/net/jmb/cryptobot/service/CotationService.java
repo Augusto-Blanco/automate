@@ -16,6 +16,7 @@ import net.jmb.cryptobot.data.entity.Asset;
 import net.jmb.cryptobot.data.entity.AssetConfig;
 import net.jmb.cryptobot.data.entity.Cotation;
 import net.jmb.cryptobot.data.enums.ModeEval;
+import net.jmb.cryptobot.data.enums.OrderSide;
 import net.jmb.cryptobot.data.enums.Period;
 import net.jmb.cryptobot.data.repository.CryptobotRepository;
 import net.jmb.cryptobot.enums.ParamContext;
@@ -51,22 +52,47 @@ public class CotationService extends CommonService {
 	}
 	
 	
-	public Cotation resetEvaluationForAsset(Asset asset, Period period) {
+	public Cotation resetEvaluationForAsset(Asset asset, OrderSide side, Date dateReset) {
+		
 		Cotation refCotation = null;
-		if (period == null) {
-			period = Period._48h;
-		}
 		Date today = new Date();
-		Date startDate = PeriodUtil.previousDateForPeriod(today, period);
-		if (period.compareTo(Period._48h) > 0) {
-			refCotation = cryptobotRepository.getMinCotationBetweenDates(asset.getSymbol(), startDate, PeriodUtil.previousDateForPeriod(today, Period._48h));
-		} else {
-			refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), startDate);
+		Cotation lastCotation = cryptobotRepository.getLastCotationBeforeDate(asset.getSymbol(), today, false);
+		
+		if (lastCotation != null && lastCotation.getCurrentOrderSide() != side) {
+			getLogger().info("** Reset Evaluation for " + asset.getSymbol() + " **\r\n");
+			Period period = asset.getAnalysisPeriodEnum();
+			List<Cotation> dbCotations = null;
+			if (dateReset == null) {
+				dateReset = PeriodUtil.previousDateForPeriod(today, period);
+			}		
+			if (side == OrderSide.BUY) {		
+				if (dateReset.before(PeriodUtil.previousDateForPeriod(today, Period._48h))) {
+					refCotation = cryptobotRepository.getMinCotationBetweenDates(asset.getSymbol(), dateReset, PeriodUtil.previousDateForPeriod(today, Period._48h));
+				} else {
+					refCotation = cryptobotRepository.getMin24hCotationAfterDate(asset.getSymbol(), dateReset);
+				}
+				if (refCotation != null) {
+					dbCotations = cryptobotRepository.getCotationsSinceDate(asset.getSymbol(), refCotation.getDatetime(), false);
+					refCotation = dbCotations.get(0).resetEvaluation();
+				}
+			} else {		
+				if (dateReset.before(PeriodUtil.previousDateForPeriod(today, Period._48h))) {
+					refCotation = cryptobotRepository.getMaxCotationBetweenDates(asset.getSymbol(), dateReset, PeriodUtil.previousDateForPeriod(today, Period._48h));
+				} else {
+					refCotation = cryptobotRepository.getMax24hCotationAfterDate(asset.getSymbol(), dateReset);
+				}
+				if (refCotation != null) {
+					dbCotations = cryptobotRepository.getCotationsSinceDate(asset.getSymbol(), refCotation.getDatetime(), false);
+					refCotation = dbCotations.get(0).resetToSell();
+				}
+			}
+			if (refCotation != null && dbCotations != null) {
+				List<AssetConfig> assetConfigList = cryptobotRepository.getAssetConfigsSinceRefCotation(refCotation, asset);
+				evaluationService.recordEvaluationsForCotations(dbCotations, asset, assetConfigList);
+				getLogger().info(refCotation + " **\r\n");
+			}
 		}
-		if (refCotation != null) {
-			return evaluateCotations(asset, refCotation.getDatetime(), true);
-		}
-		return null;
+		return refCotation;
 	}
 	
 

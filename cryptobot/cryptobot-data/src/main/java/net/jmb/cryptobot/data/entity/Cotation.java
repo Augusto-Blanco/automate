@@ -482,6 +482,23 @@ public class Cotation extends AbstractEntity implements Serializable, Comparable
 				.canResetBestSellPrice(true)
 				.canResetBestBuyPrice(false);
 		}
+		
+		
+		public Cotation resetToSell() {
+			return this
+				.flagSell()
+				.currentSide(OrderSide.SELL)
+				.flagBuy(null)
+				.nbLoss(0)
+				.percentLoss(0d)
+				.canResetBestSellPrice(false)
+				.canResetBestBuyPrice(true)
+				.currentSide(OrderSide.SELL)
+				.sellPrice(price)
+				.bestSellPrice(price)
+				.quantity(0d);
+		}
+		
 
 
 		@Override

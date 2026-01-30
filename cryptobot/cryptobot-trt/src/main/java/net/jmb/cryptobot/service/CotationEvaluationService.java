@@ -37,10 +37,8 @@ public class CotationEvaluationService extends CommonService {
 	@Transactional
 	public void recordEvaluationsForCotations(List<Cotation> cotations, Asset asset, List<AssetConfig> assetConfigList) {
 		
-		Map<AssetConfig, List<Cotation>> map = new Hashtable<AssetConfig, List<Cotation>>();
-		
-		resetAssetConfigs(assetConfigList);
-		
+		Map<AssetConfig, List<Cotation>> map = new Hashtable<AssetConfig, List<Cotation>>();		
+		resetAssetConfigs(assetConfigList);		
 		for (Cotation cotation : cotations) {
 			AssetConfig assetConfigForCotation = null;
 			for (AssetConfig assetConfig : assetConfigList) {				
@@ -60,8 +58,7 @@ public class CotationEvaluationService extends CommonService {
 				}
 				cotationList.add(cotation);
 			}
-		}
-		
+		}		
 		Cotation lastCotation = null;
 		for (AssetConfig assetConfig : assetConfigList) {
 			List<Cotation> cotationList = map.get(assetConfig);

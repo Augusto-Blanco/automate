@@ -1,5 +1,6 @@
 package net.jmb.cryptobot.data.repository;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -54,14 +55,24 @@ public interface AssetConfigRepository extends JpaRepository<AssetConfig, Long>,
 		return delete(specDateGreaterOrEquals(symbol, refDate, analysisPeriod));
 	}
 	
-	List<AssetConfig> findBySymbolEqualsAndEndTimeGreaterThanEqual(String symbol, Date dateRef);
-	
 	
 	public List<AssetConfig> findBySymbol(String symbol);
 	
 	@Query(ASSET_CONFIG_FOR_SYMBOL_AND_DATE)
 	public List<AssetConfig> findBySymbolAndDate(String symbol, Date dateRef);
 	
+	
+
+	default public List<AssetConfig> findBySymbolAndDateOrDateGreater(String symbol, Date dateRef) {
+		List<AssetConfig> result = new ArrayList<AssetConfig>();
+		List<AssetConfig> refConfigs = findBySymbolAndDate(symbol, dateRef);
+		if (refConfigs != null) {
+			for (AssetConfig assetConfig : refConfigs) {
+				result.addAll(findAll(specDateGreaterOrEquals(symbol, assetConfig.getEndTime(), assetConfig.getAnalysisPeriod())));
+			}
+		}
+		return result;		
+	}
 	
 	
 

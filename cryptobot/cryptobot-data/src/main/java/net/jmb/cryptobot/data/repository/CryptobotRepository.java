@@ -119,14 +119,12 @@ public class CryptobotRepository extends GenericRepository {
 	
 	
 	public Cotation getMin24hCotationAfterDate(String symbol, Date dateRef) {
-		Cotation cotation = null;
-		
+		Cotation cotation = null;		
 		if (symbol != null) {
 			if (dateRef == null) {
 				dateRef = new Date();
 			}
-			List<Cotation> cotations = cotationRepository.findMinPrice24hCotationForSymbolAfterDate(symbol, dateRef);
-			
+			List<Cotation> cotations = cotationRepository.findMinPrice24hCotationForSymbolAfterDate(symbol, dateRef);			
 			if (cotations != null && cotations.size() > 0) {
 				for (Cotation tmp : cotations) {
 					if (cotation == null || tmp.getMin24h() < cotation.getMin24h()) {
@@ -136,8 +134,7 @@ public class CryptobotRepository extends GenericRepository {
 			}
 		}
 		return cotation;
-	}
-	
+	}	
 	
 	public Cotation getMinCotationBetweenDates(String symbol, Date startDate, Date endDate) {
 		Cotation cotation = null;		
@@ -151,7 +148,46 @@ public class CryptobotRepository extends GenericRepository {
 		}
 		return cotation;
 	}
-		
+	
+	public Cotation getMax24hCotationAfterDate(String symbol, Date dateRef) {
+		Cotation cotation = null;		
+		if (symbol != null) {
+			if (dateRef == null) {
+				dateRef = new Date();
+			}
+			List<Cotation> cotations = cotationRepository.findMaxPrice24hCotationForSymbolAfterDate(symbol, dateRef);			
+			if (cotations != null && cotations.size() > 0) {
+				for (Cotation tmp : cotations) {
+					if (cotation == null || tmp.getMax24h() > cotation.getMax24h()) {
+						cotation = tmp;
+					}
+				}
+			}
+		}
+		return cotation;
+	}	
+	
+	public Cotation getMaxCotationBetweenDates(String symbol, Date startDate, Date endDate) {
+		Cotation cotation = null;		
+		if (symbol != null && startDate != null && endDate != null) {
+			List<Cotation> cotations = cotationRepository.findMaxPriceCotationForSymbolBetweenDates(symbol, startDate, endDate);			
+			if (cotations != null && cotations.size() > 0) {
+				for (Cotation tmp : cotations) {
+					cotation = tmp;
+				}
+			}
+		}
+		return cotation;
+	}
+	
+	
+	public List<AssetConfig> getAssetConfigsSinceRefCotation(Cotation refCotation, Asset asset) {
+		List<AssetConfig> configList = assetConfigRepository.findBySymbolAndDateOrDateGreater(refCotation.getSymbol(), refCotation.getDatetime());
+		if (configList != null) {
+			configList.removeIf(config -> !config.getAnalysisPeriodEnum().val.equals(asset.getAnalysisPeriod()));
+		}
+		return configList;
+	}
 	
 	public AssetConfig getAssetConfigForCotation(Cotation cotation, ModeEval modeEval) {
 		AssetConfig assetConfig = null;
@@ -235,6 +271,11 @@ public class CryptobotRepository extends GenericRepository {
 	
 	public Trade getLastBuyTradeForAsset(String symbol) {
 		Trade lastTrade = tradeRepository.findFirstBySymbolAndSideOrderByTimeDesc(symbol, OrderSide.BUY.name());
+		return lastTrade;
+	}
+	
+	public Trade getLastTradeForAsset(String symbol) {
+		Trade lastTrade = tradeRepository.findFirstBySymbolOrderByTimeDesc(symbol);
 		return lastTrade;
 	}
 	

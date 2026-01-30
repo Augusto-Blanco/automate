@@ -19,6 +19,8 @@ public interface TradeRepository extends JpaRepository<Trade, Long>, JpaSpecific
 	
 	Trade findFirstBySymbolAndSideOrderByTimeDesc(String symbol, String side);
 	
+	Trade findFirstBySymbolOrderByTimeDesc(String symbol);
+	
 	
 	@Query(
 		"select t from Trade t "
